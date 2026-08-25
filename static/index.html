@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AskWhiz Extractor</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>AskWhiz Extractor</h1>
+  <p class="subtitle">Drop in a handbook PDF, it gets read and organized automatically, and anything the computer
+    couldn't read gets flagged for you to check.</p>
+  <nav id="tabs">
+    <button data-tab="run" class="tab active">Handbooks</button>
+    <button data-tab="review" class="tab">Review</button>
+    <span class="nav-divider">Advanced</span>
+    <button data-tab="config" class="tab">Settings</button>
+    <button data-tab="tables" class="tab">Manual Corrections</button>
+    <button data-tab="chunks" class="tab">Browse Results</button>
+    <button data-tab="pages" class="tab">Page Explorer</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ============================== RUN ============================== -->
+  <section id="tab-run" class="tab-panel active">
+
+    <div class="panel add-handbook">
+      <h2>Add a handbook</h2>
+      <p class="hint">Any handbook PDF works, not just the ones already here. Give it a name and drop the file in --
+        it gets processed automatically, and you'll be taken straight to whatever's worth a quick look.</p>
+      <div class="add-handbook-form">
+        <input type="text" id="new-handbook-name" placeholder="Handbook name, e.g. Graduate Student Handbook 2027">
+        <input type="text" id="new-handbook-audience" placeholder="Who is it for? (optional)">
+        <input type="file" id="new-handbook-file" accept="application/pdf">
+        <button id="new-handbook-add" class="primary">Add &amp; process</button>
+      </div>
+      <div id="new-handbook-status" class="status-msg"></div>
+    </div>
+
+    <div id="doc-cards" class="cards"></div>
+  </section>
+
+  <!-- ============================= REVIEW ============================= -->
+  <section id="tab-review" class="tab-panel">
+    <div class="panel">
+      <div class="row">
+        <label>Handbook
+          <select id="review-doc-select"></select>
+        </label>
+        <button id="review-run-btn" class="primary">Process</button>
+        <span id="review-status" class="status-msg"></span>
+      </div>
+      <div id="review-summary"></div>
+      <div id="review-run-result"></div>
+
+      <div id="correction-editor" class="correction-editor" style="display:none;">
+        <div class="row">
+          <h3 id="correction-editor-title"></h3>
+          <button type="button" id="correction-cancel" class="small-btn">Close</button>
+        </div>
+        <div class="page-review">
+          <div id="correction-image-wrap" class="page-image-wrap img-wrap">
+            <span class="spinner"></span>
+            <img id="correction-image" alt="page image">
+          </div>
+          <div class="page-text-wrap">
+            <h3>Extracted text (for reference)</h3>
+            <pre id="correction-extracted-text"></pre>
+            <h3>Correct transcription</h3>
+            <div class="field"><label>Title</label><input type="text" id="correction-title"></div>
+            <div class="field"><label>Breadcrumb</label><input type="text" id="correction-breadcrumb"></div>
+            <div class="field"><label>Text</label>
+              <textarea id="correction-text" rows="10"></textarea></div>
+            <div class="field"><label>Authored by</label>
+              <input type="text" id="correction-authored-by" placeholder="Your name"></div>
+            <label class="correction-verified-row">
+              <input type="checkbox" id="correction-verified">
+              I checked this against the page image above
+            </label>
+            <div class="row" style="margin-top:0.5rem;">
+              <button type="button" id="correction-save" class="primary">Save correction</button>
+              <span id="correction-status" class="status-msg"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="review-list"></div>
+    </div>
+  </section>
+
+  <!-- ============================= CONFIG ============================= -->
+  <section id="tab-config" class="tab-panel">
+    <div class="panel">
+      <p class="hint">Fine-tuning for one handbook: which pages to skip, running headers to strip, known typos to
+        fix, and how headings are detected. New handbooks work fine with none of this set -- these are refinements,
+        not requirements.</p>
+      <div class="row">
+        <label>Handbook
+          <select id="config-doc-select"></select>
+        </label>
+        <button id="config-save" class="primary">Save settings</button>
+        <span id="config-status" class="status-msg"></span>
+      </div>
+      <form id="config-form"></form>
+    </div>
+  </section>
+
+  <!-- ============================= TABLES ============================= -->
+  <section id="tab-tables" class="tab-panel">
+    <div class="panel">
+      <div class="row">
+        <h2>Manual corrections</h2>
+        <button id="table-add">+ Add correction</button>
+        <button id="tables-save" class="primary">Save all</button>
+        <span id="tables-status" class="status-msg"></span>
+      </div>
+      <p class="hint">For content a PDF parser can't read on its own -- a table that's really a pasted screenshot,
+        a diagram, anything flagged for review on the Handbooks tab -- type in the correct text here by hand. It
+        gets stitched into the results at the right spot. Nothing here counts until <strong>verified</strong> is
+        checked, confirming a human checked it against the actual printed page.</p>
+      <div id="authored-list"></div>
+    </div>
+  </section>
+
+  <!-- ============================= CHUNKS ============================= -->
+  <section id="tab-chunks" class="tab-panel">
+    <div class="panel">
+      <div class="row">
+        <label>Handbook
+          <select id="chunks-doc-select"></select>
+        </label>
+        <input id="chunks-search" type="search" placeholder="search chunk text or title...">
+        <button id="chunks-download">Download .jsonl</button>
+        <span id="chunks-count" class="status-msg"></span>
+      </div>
+      <div id="chunks-list"></div>
+    </div>
+  </section>
+
+  <!-- ============================= PAGES ============================= -->
+  <section id="tab-pages" class="tab-panel">
+    <div class="panel">
+      <div class="row">
+        <label>Handbook
+          <select id="pages-doc-select"></select>
+        </label>
+        <label>Page
+          <select id="pages-page-select"></select>
+        </label>
+        <span id="pages-flags" class="status-msg"></span>
+      </div>
+      <div class="page-review">
+        <div id="page-image-wrap" class="page-image-wrap img-wrap">
+          <span class="spinner"></span>
+          <img id="page-image" alt="page image">
+        </div>
+        <div class="page-text-wrap">
+          <h3>Extracted text</h3>
+          <pre id="page-text"></pre>
+          <h3>Spans (bold / size / x0 &mdash; used for heading detection)</h3>
+          <div id="page-spans"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

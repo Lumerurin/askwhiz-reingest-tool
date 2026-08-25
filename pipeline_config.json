@@ -1,0 +1,208 @@
+{
+  "docs": {
+    "college": {
+      "doc_id": "handbook_college",
+      "source": "College Student Handbook",
+      "audience": "college",
+      "pdf_filename": "uploads/college.pdf",
+      "page_label_offset": -1,
+      "suppress_pages": [
+        1,
+        2,
+        3
+      ],
+      "expected_pages_in": 65,
+      "normalize": {
+        "strip_line_patterns": [
+          "^MCM COLLEGE STUDENT MANUAL$",
+          "^\\d{1,3}$"
+        ],
+        "typos": {}
+      },
+      "chunker": {
+        "footer_pattern": "^(MCM COLLEGE STUDENT MANUAL|\\d{1,3})\\s*$",
+        "h1_x0": [
+          80.0,
+          95.0
+        ],
+        "missing_tables": [
+          21
+        ],
+        "typos": {}
+      }
+    },
+    "shs": {
+      "doc_id": "handbook_shs",
+      "source": "Senior High School Student Handbook",
+      "audience": "shs",
+      "pdf_filename": "uploads/shs.pdf",
+      "page_label_offset": 0,
+      "suppress_pages": [
+        1,
+        2
+      ],
+      "expected_pages_in": 31,
+      "normalize": {
+        "strip_line_patterns": [],
+        "typos": {
+          "3": [
+            [
+              "environament",
+              "environment"
+            ]
+          ],
+          "4": [
+            [
+              "suport",
+              "support"
+            ],
+            [
+              "formallyannounced",
+              "formally announced"
+            ],
+            [
+              "Sneior",
+              "Senior"
+            ],
+            [
+              "Livelihhod",
+              "Livelihood"
+            ]
+          ],
+          "21": [
+            [
+              "jurisdictiononly",
+              "jurisdiction only"
+            ],
+            [
+              "expulsionshall",
+              "expulsion shall"
+            ],
+            [
+              "recommednation",
+              "recommendation"
+            ],
+            [
+              "AFter",
+              "After"
+            ]
+          ],
+          "25": [
+            [
+              "acadèmic",
+              "academic"
+            ]
+          ],
+          "31": [
+            [
+              "suport",
+              "support"
+            ],
+            [
+              "acadèmic",
+              "academic"
+            ]
+          ]
+        }
+      },
+      "chunker": {
+        "footer_pattern": "^\\d{1,3}\\s*$",
+        "h1_x0": null,
+        "missing_tables": [],
+        "typos": {
+          "3": [
+            [
+              "environament",
+              "environment"
+            ]
+          ],
+          "4": [
+            [
+              "suport",
+              "support"
+            ],
+            [
+              "formallyannounced",
+              "formally announced"
+            ],
+            [
+              "Sneior",
+              "Senior"
+            ],
+            [
+              "Livelihhod",
+              "Livelihood"
+            ]
+          ],
+          "21": [
+            [
+              "jurisdictiononly",
+              "jurisdiction only"
+            ],
+            [
+              "expulsionshall",
+              "expulsion shall"
+            ],
+            [
+              "recommednation",
+              "recommendation"
+            ],
+            [
+              "AFter",
+              "After"
+            ]
+          ],
+          "25": [
+            [
+              "acadèmic",
+              "academic"
+            ],
+            [
+              "Acadmic",
+              "Academic"
+            ]
+          ],
+          "31": [
+            [
+              "suport",
+              "support"
+            ],
+            [
+              "acadèmic",
+              "academic"
+            ]
+          ]
+        }
+      }
+    },
+    "high-school-handbook": {
+      "doc_id": "handbook_high_school_handbook",
+      "source": "High School Handbook",
+      "audience": "high-school-handbook",
+      "pdf_filename": "uploads/high-school-handbook.pdf",
+      "page_label_offset": 0,
+      "suppress_pages": [],
+      "expected_pages_in": 48,
+      "normalize": {
+        "strip_line_patterns": [],
+        "typos": {}
+      },
+      "chunker": {
+        "footer_pattern": "^\\d{1,3}\\s*$",
+        "h1_x0": null,
+        "missing_tables": [],
+        "typos": {}
+      }
+    }
+  },
+  "required_authored": {
+    "handbook_college": [
+      "academic_status_gwa",
+      "latin_honors_gwa",
+      "grading_scale"
+    ],
+    "handbook_shs": [
+      "grade_transmutation"
+    ]
+  }
+}

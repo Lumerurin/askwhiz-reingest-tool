@@ -1,0 +1,225 @@
+[
+  {
+    "doc_id": "handbook_college",
+    "authored_id": "academic_status_gwa",
+    "title": "Academic Status by General Weighted Average",
+    "breadcrumb": "[College Student Handbook > MCM Grading System > Academic Status by GWA]",
+    "covers_pages": [
+      21
+    ],
+    "pages": [
+      21
+    ],
+    "page_labels": [
+      20
+    ],
+    "verified": true,
+    "authored_by": "Mel Macabenta",
+    "authored_on": "2026-07-10",
+    "provenance": "The table is a pasted raster image on the PDF page (verify_extraction.py found an extra 397x205 image on page 21 and extract_tables() returned nothing); no parser can read it, so the rows were transcribed by hand from the page image. Boundary note: 3.50 is inclusive at the top of OK (GWA <= 3.50) and exclusive at the bottom of Probationary (3.50 < GWA), so a GWA of exactly 3.50 is OK. Verified against the printed handbook by Mel Macabenta on 2026-07-11. Rows, boundaries and conditions confirmed against printed page 20.",
+    "text": "The academic status of a student is determined by his General Weighted Average (GWA) and certain conditions, as follows.\nA student with a GWA from 1.00 to 3.50 inclusive has an academic status of OK.\nA student with a GWA above 3.50 and up to 4.50 inclusive is placed on Probationary status.\nA student is placed Out of the Program under any of the following conditions: (a) a GWA above 4.50 and up to 5.00; (b) two consecutive years classified under Probationary status; or (c) while under Probationary status, the student failed for the third time any course stipulated in the first two years of his curriculum, including PE, NSTP and Values Education.\nOriginal table (Academic Status | Condition/s):\n| OK | 1.00 <= GWA <= 3.50 |\n| Probationary | 3.50 < GWA <= 4.50 |\n| Out of the Program | 4.50 < GWA <= 5.00, or two consecutive years Probationary, or third failure of a first-two-years course while Probationary |"
+  },
+  {
+    "doc_id": "handbook_college",
+    "authored_id": "latin_honors_gwa",
+    "title": "Latin Honors GWA Requirements",
+    "breadcrumb": "[College Student Handbook > MCM Grading System > Latin Honors]",
+    "covers_pages": [
+      27
+    ],
+    "pages": [
+      27
+    ],
+    "page_labels": [
+      26
+    ],
+    "verified": true,
+    "authored_by": "Mel Macabenta",
+    "authored_on": "2026-07-10",
+    "provenance": "The table extracts as three columns with the GWA lower bound split from its operator, so a naive row-to-sentence conversion produces wrong boundaries; transcribed by hand. Operator note: Summa's lower bound is inclusive (1.00 <= GWA <= 1.25) while Magna and Cum Laude are exclusive (1.25 < GWA, 1.50 < GWA), so a GWA of exactly 1.25 is Summa Cum Laude and exactly 1.50 is Magna Cum Laude. Verified against the printed handbook by Mel Macabenta on 2026-07-11. The three honors, their GWA ranges and the operator boundaries confirmed against printed page 26.",
+    "text": "The following Latin Honors apply to graduating students of baccalaureate programs, based on General Weighted Average (GWA).\nA GWA from 1.00 to 1.25 inclusive qualifies for Summa Cum Laude.\nA GWA above 1.25 and up to 1.50 inclusive qualifies for Magna Cum Laude.\nA GWA above 1.50 and up to 1.75 inclusive qualifies for Cum Laude.\nA student with a GWA of exactly 1.25 qualifies for Summa Cum Laude; exactly 1.50 qualifies for Magna Cum Laude; exactly 1.75 qualifies for Cum Laude.\nOriginal table (Latin Honor | GWA):\n| SUMMA CUM LAUDE | 1.00 <= GWA <= 1.25 |\n| MAGNA CUM LAUDE | 1.25 < GWA <= 1.50 |\n| CUM LAUDE | 1.50 < GWA <= 1.75 |"
+  },
+  {
+    "doc_id": "handbook_college",
+    "authored_id": "grading_scale",
+    "title": "MCM Grading System: numeric grades, letter grades, and status codes",
+    "breadcrumb": "[College Student Handbook > MCM Grading System > Grading Scale]",
+    "covers_pages": [
+      17,
+      18
+    ],
+    "pages": [
+      17,
+      18
+    ],
+    "page_labels": [
+      16,
+      17
+    ],
+    "verified": true,
+    "authored_by": "Mel Macabenta",
+    "authored_on": "2026-07-10",
+    "provenance": "The grade/descriptor table spans the printed page 16->17 break; the header row appears only on page 16, so the 22 rows on page 17 are unlabelled in isolation. Rows transcribed verbatim from the page image, column labels supplied from page 16. Confirmed against the printed pages on 2026-07-11: (1) The two diploma letter grades appear as -A and -B, minus before the letter, exactly as extracted; this is the handbook's printed form, not an extraction artifact, and both prose and table now render them that way. (2) '2.00 Meritorious' falls between '1.75 Good' and '2.25 Very Satisfactory' -- confirmed as printed; this is the Mapua scale and must not be reordered. (3) Rows B+, B and -B have an empty Baccalaureate cell (preserved as '(blank)'), read as 'not used in baccalaureate programs'; A+, A and -A use '-' for the same meaning. (4) The handbook prints '1.0'; the prose gives both '1.00' and '1.0' so either query form matches, and the preserved table keeps '1.0'. Verified against the printed handbook by Mel Macabenta on 2026-07-11.",
+    "text": "In baccalaureate programs, a grade of 1.00 (printed as 1.0 in the handbook) is Excellent, 1.25 is Superior, 1.50 is Very Good, 1.75 is Good, 2.00 is Meritorious, 2.25 is Very Satisfactory, 2.50 is Satisfactory, 2.75 is Fairly Satisfactory, 3.00 is Passed, and 5.00 is Failed; none of these numerical grades apply to diploma programs. The handbook lists no grade between 3.00 and 5.00.\nDiploma programs use letter grades instead. As printed in the handbook these are -A (Very Good) and -B (Very Satisfactory), with the minus sign written before the letter; the full set is A+ (Excellent), A (Superior), -A (Very Good), B+ (Good), B (Meritorious), and -B (Very Satisfactory). These letter grades do not apply to baccalaureate programs.\nSeveral marks are shared across both program types: INC means Incomplete, FA means Absent, DRP means Dropped, P means Passed, C means Continuing, F means Failed, AUD means Audit, and NA means Not Applicable. IP indicates a course is In Progress and applies only to baccalaureate programs.\nOriginal table, as printed (Grade | Baccalaureate Programs | Diploma Programs):\n| 1.0 | Excellent | - |\n| 1.25 | Superior | - |\n| 1.50 | Very Good | - |\n| 1.75 | Good | - |\n| 2.00 | Meritorious | - |\n| 2.25 | Very Satisfactory | - |\n| 2.50 | Satisfactory | - |\n| 2.75 | Fairly Satisfactory | - |\n| 3.00 | Passed | - |\n| 5.00 | Failed | - |\n| INC | Incomplete | Incomplete |\n| FA | Absent | Absent |\n| DRP | Dropped | Dropped |\n| P | Passed | Passed |\n| C | Continuing | Continuing |\n| F | Failed | Failed |\n| AUD | Audit | Audit |\n| A+ | - | Excellent |\n| A | - | Superior |\n| -A | - | Very Good |\n| B+ | (blank) | Good |\n| B | (blank) | Meritorious |\n| -B | (blank) | Very Satisfactory |\n| NA | Not Applicable | Not Applicable |\n| IP | In Progress | - |"
+  },
+  {
+    "doc_id": "handbook_shs",
+    "authored_id": "grade_transmutation",
+    "title": "SHS Grading System: grade transmutation, descriptors and remarks",
+    "breadcrumb": "[Senior High School Student Handbook > Grading System > Grade Transmutation]",
+    "covers_pages": [
+      25
+    ],
+    "pages": [
+      25
+    ],
+    "page_labels": [
+      25
+    ],
+    "verified": true,
+    "authored_by": "Mel Macabenta",
+    "authored_on": "2026-07-10",
+    "provenance": "Extraction scrambles the last row because the descriptor cell wraps, producing the line sequence 'Below 75 / Did Not Meet / Expectations / FAILED'; transcribed by hand. The scale follows DepEd Order No. 8 s. 2015. Verified against the printed handbook by Mel Macabenta on 2026-07-11. The five grade bands, their descriptors and remarks, and the 75 minimum passing grade confirmed against printed page 25.",
+    "text": "Transmuted grades map to descriptors and remarks as follows: 90-100 is Outstanding and PASSED, 85-89 is Very Satisfactory and PASSED, 80-84 is Satisfactory and PASSED, 75-79 is Fairly Satisfactory and PASSED, and below 75 is Did Not Meet Expectations and FAILED. The minimum passing transmuted grade is 75.\nOriginal table, as printed (Grade | Descriptor | Remarks):\n| 90-100 | Outstanding | PASSED |\n| 85-89 | Very Satisfactory | PASSED |\n| 80-84 | Satisfactory | PASSED |\n| 75-79 | Fairly Satisfactory | PASSED |\n| Below 75 | Did Not Meet Expectations | FAILED |"
+  },
+  {
+    "doc_id": "handbook_high_school_handbook",
+    "authored_id": "page_17",
+    "title": "Page 17 (manual correction)",
+    "breadcrumb": "[High School Handbook > ATTENDANCE, ABSENCES, AND TARDINESS]",
+    "covers_pages": [
+      17
+    ],
+    "pages": [
+      17
+    ],
+    "page_labels": [
+      17
+    ],
+    "verified": true,
+    "authored_by": "Mel Macabenta",
+    "authored_on": "2026-08-24",
+    "provenance": "Manually corrected via the Review tab for page 17.",
+    "text": "F. Habitual tardiness, especially during the first period in the morning \nand in the afternoon, is discouraged. Class Advisers will inform the \nparents/guardians and the Center for Guidance and Counselling (CGC) \nthrough a written notice if a student has incurred 5 days of tardiness, or \nrepeated tardiness spread through the semester.\n3 repeated tardiness spread through the semester - Adviser talks to student\n\n4 repeated tardiness spread through the semester - CGC referral\n\n5 repeated tardiness spread - Adviser Informs Parents\n\n6 or more repeated tardiness spread through the semester - Center for Student Activities and\nDiscipline referral * Major Offense #31\n\nG. The following situations are considered as Excused Absences:\nSickness/Illness (2 days and above, supported by Medical\nCertificate)\nOfficially represents Mapúa Malayan Colleges Mindanao in\nexternal activities; and/or,\nOfficially represents his/her class/track/strand in Mapúa MCM\nactivities.\nH. A student who has been absent must abide by the following procedure \nupon returning to school:\n1. Provide Excuse Letter duly signed by the student and \nparent/guardian. The Excuse Letter must contain the inclusive \ndate(s) and reason (s) for the absence. If absence is due to \nsickness/illness, Medical Certificate must be attached to the Excuse \nLetter.\n2. Excuse Letter and Medical Certificate (if applicable) must be \nsubmitted to the Class adviser upon return of student.\n"
+  },
+  {
+    "doc_id": "handbook_high_school_handbook",
+    "authored_id": "page_33",
+    "title": "Page 33 (manual correction)",
+    "breadcrumb": "[High School Handbook > FLOW CHART IN HEARING OF STUDENT CASES]",
+    "covers_pages": [
+      33
+    ],
+    "pages": [
+      33
+    ],
+    "page_labels": [
+      33
+    ],
+    "verified": true,
+    "authored_by": "Mel Macabenta",
+    "authored_on": "2026-08-24",
+    "provenance": "Manually corrected via the Review tab for page 33.",
+    "text": "FLOW CHART IN HEARING\nOF STUDENT CASES\n• The Center for Student Activities and Discipline conducts \npreliminary investigation and evaluation to determine prima facie \nevidence.\n• Complaints shall be filed at the Center for Student Activities and \nDiscipline who has jurisdiction only in cases where Student/s are \nthe respondents.\n• Cases are categorized into three;\na. Cases with equivalent sanction of suspention 1-10 days with or\nwithout community service\nb. Cases with equivalent sanction of suspension 2220 days with or without community service\nc. Cases recommended for Committee on Decorum and \nInvestigation, upon discretion of Center for Student Activities \nand Discipline (based on the complexity of the case)\n• All cases will be heard with strict observance of due process.\n• After hearing of the case, decision/recommednation will be\nformulated for implementation/approval of the concerned office/s \n• Appeal of cases with equivalent penalty of suspension of less than \n20% of the prescribed class days for the school year with or \nwithout community service imposed by the Center for Student \nActivities and Discipline shall be filed with the Office of the \nPrincipal while cases handled by the CDI and those with \nequivalent sanction of non-readmission and/or expulsion shall be \nfiled to the Office of Executive Vice President.\n\nFlow Chart in Hearing of Student Cases\n\n1. Complaint Received. Complaints shall be filed at the Center for Student Activities and\n   Discipline (CSAD), which has jurisdiction only in cases where a student is the respondent.\n2. Preliminary Investigation & Evaluation. The CSAD conducts a preliminary investigation and\n   evaluation to determine prima facie evidence.\n3. Categorize the Case. Cases are categorized into three types:\n   a. Cases with an equivalent sanction of suspension for 1-10 days, with or without\n      community service.\n   b. Cases with an equivalent sanction of suspension for 11-20 days, with or without\n      community service.\n   c. Cases recommended for the Committee on Decorum and Investigation (CDI), at the\n      discretion of the CSAD, based on the complexity of the case.\n4. Hearing Proper. All cases are heard with strict observance of due process.\n5. Decision & Recommendation. After the hearing, a decision/recommendation is formulated\n   for implementation or approval by the concerned office(s).\n6. Appeal?\n   - If an appeal is filed: for cases with an equivalent penalty of suspension of less than\n     20% of the prescribed class days (with or without community service) imposed by the\n     CSAD, the appeal is filed with the Office of the Principal. For cases handled by the\n     CDI, and those with an equivalent sanction of non-readmission and/or expulsion, the\n     appeal is filed with the Office of the Executive Vice President. The concerned office\n     then issues its own Decision & Recommendation.\n   - If no appeal is filed: the decision is implemented after 10 days.\n7. End.\n"
+  },
+  {
+    "doc_id": "handbook_high_school_handbook",
+    "authored_id": "page_39",
+    "title": "Page 39 (manual correction)",
+    "breadcrumb": "[High School Handbook > GRADING SYSTEM AND IDENTIFICATION OF ACADEMIC HONORS]",
+    "covers_pages": [
+      39
+    ],
+    "pages": [
+      39
+    ],
+    "page_labels": [
+      39
+    ],
+    "verified": true,
+    "authored_by": "Mel Macabenta",
+    "authored_on": "2026-08-24",
+    "provenance": "Manually corrected via the Review tab for page 39.",
+    "text": "GRADING SYSTEM AND\nIDENTIFICATION OF\nACADEMIC HONORS\nMapúa Malayan Colleges Mindanao High School Department follows \nDepEd order No. 8 series 2015 in its grading System and in identifying \nits academic honors. Mapúa MCM High School uses a standards- and \ncompetency-based grading system.\nMapúa Malayan Colleges Mindanao High School Department uses a standards- and competency-based grading system following DepEd Order No. 8, series 2015.\n\nJunior High School (Grades 7–10)\n\nLanguages, AP, and EsP\n\nWritten Works: 30%\n\nPerformance Task: 50%\n\nQuarterly Assessment: 20%\n\nScience and Math\n\nWritten Works: 40%\n\nPerformance Task: 40%\n\nQuarterly Assessment: 20%\n\nMAPEH and TLE\n\nWritten Works: 20%\n\nPerformance Task: 60%\n\nQuarterly Assessment: 20%\n\nSenior High School (Grades 11–12)\n\nCore Subjects\n\nWritten Works: 25%\n\nPerformance Task: 50%\n\nQuarterly Assessment: 25%\n\nAcademic Track (All other Subjects)\n\nWritten Works: 25%\n\nPerformance Task: 45%\n\nQuarterly Assessment: 30%\n\nAcademic Track (Work Immersion / Research / Business Enterprise Simulation / Exhibit / Performance)\n\nWritten Works: 35%\n\nPerformance Task: 40%\n\nQuarterly Assessment: 25%\n\nTechnical-Vocational and Livelihood (TVL) / Sports / Arts and Design Track (All other Subjects)\n\nWritten Works: 20%\n\nPerformance Task: 60%\n\nQuarterly Assessment: 20%\n\nTechnical-Vocational and Livelihood (TVL) / Sports / Arts and Design Track (Work Immersion / Research / Exhibit / Performance)\n\nWritten Works: 20%\n\nPerformance Task: 60%\n\nQuarterly Assessment: 20%"
+  },
+  {
+    "doc_id": "handbook_high_school_handbook",
+    "authored_id": "page_40",
+    "title": "Page 40 (manual correction)",
+    "breadcrumb": "[High School Handbook > GRADING SYSTEM AND IDENTIFICATION OF ACADEMIC HONORS]",
+    "covers_pages": [
+      40
+    ],
+    "pages": [
+      40
+    ],
+    "page_labels": [
+      40
+    ],
+    "verified": true,
+    "authored_by": "Mel Macabenta",
+    "authored_on": "2026-08-24",
+    "provenance": "Manually corrected via the Review tab for page 40.",
+    "text": "The grading system follows a transmutation scheme whose passing \nrate is 60%, transmuted to 75. This means that for a student to pass \na particular course, he/she must be able to consistently meet 60% of \nthe total score across all the requirements of the course.\nThe transmuted grades will have number-equivalent as shown in the \ntable below;\nTRANSMUTED GRADE: DESCRIPTOR: REMARK:\n90-100 Outstanding PASSED\n85-89 Very Satisfactory PASSED\n80-84 Satisfactory PASSED\n75-79 Fairly Satisfactory PASSED\nBELOW 75 Did Not Meet FAILED\nExpectations\nThe award for Academic Excellence within the quarter is given to \nlearners from Grades 7-12 who have attained an average of at least 90 \nand passed ALL learning areas - with no grade below 85.\nACADEMIC EXCELLENCE AVERAGE GRADE PER\nAWARD QUARTER\nWITH HIGHEST HONORS 98-100\nWITH HIGH HONORS 95-97\nWITH HONORS 90-94\nA learner who have attained a general average of at least 90, passed all \nlearning areas with no grade below 85 for all subjects taken in the \ngrade level and consistent academic excellence awardee in all quarters \nshall be given Recognition at the end of the school year.\n"
+  },
+  {
+    "doc_id": "handbook_high_school_handbook",
+    "authored_id": "page_41",
+    "title": "Page 41 (manual correction)",
+    "breadcrumb": "[High School Handbook > PROMOTION AND RETENTION]",
+    "covers_pages": [
+      41
+    ],
+    "pages": [
+      41
+    ],
+    "page_labels": [
+      41
+    ],
+    "verified": true,
+    "authored_by": "Mel Macabenta",
+    "authored_on": "2026-08-25",
+    "provenance": "Manually corrected via the Review tab for page 41.",
+    "text": "PROMOTION AND RETENTION\n\nFor Grade 7–10 Learners\n\nIf a student achieves a final grade of at least 75 in all learning areas, the decision is promotion to the next grade level.\n\nIf a student does not meet expectations in not more than two learning areas, they must pass remedial classes for those failing learning areas to be promoted to the next grade level. Otherwise, the student is retained in the same grade level.\n\nIf a student does not meet expectations in three or more learning areas, the decision is retention in the same grade level.\n\nIf a student passes all learning areas in Junior High School, they earn a Junior High School Certificate and are promoted to Senior High School.\n"
+  },
+  {
+    "doc_id": "handbook_high_school_handbook",
+    "authored_id": "page_42",
+    "title": "Page 42 (manual correction)",
+    "breadcrumb": "[High School Handbook > PROMOTION AND RETENTION]",
+    "covers_pages": [
+      42
+    ],
+    "pages": [
+      42
+    ],
+    "page_labels": [
+      42
+    ],
+    "verified": true,
+    "authored_by": "Mel Macabenta",
+    "authored_on": "2026-08-25",
+    "provenance": "Manually corrected via the Review tab for page 42.",
+    "text": "For Grade 11–12 Learners\n\nWhen a student achieves final grades of at least 75 in all learning areas in a semester, they can proceed to the next grade level.\n\nWhen a student does not meet expectations in a prerequisite subject in a learning area, they must pass remedial classes for failed competencies in the subject before being allowed to enroll in the higher level subject.\n\nWhen a student does not meet expectations in any subject or learning area at the end of the semester, they must pass remedial classes for failed competencies in the subjects or learning areas to be allowed to enroll in the next semester. Otherwise, the learner must retake the subjects failed.\n\nWhen a student passes all learning areas in Senior High School, they earn a Senior High School Certificate."
+  },
+  {
+    "doc_id": "handbook_shs",
+    "authored_id": "page_21",
+    "title": "Page 21 (manual correction)",
+    "breadcrumb": "[Senior High School Student Handbook > Flow Chart in Hearing of Student Cases]",
+    "covers_pages": [
+      21
+    ],
+    "pages": [
+      21
+    ],
+    "page_labels": [
+      21
+    ],
+    "verified": true,
+    "authored_by": "Mel Macabenta",
+    "authored_on": "2026-08-25",
+    "provenance": "Manually corrected via the Review tab for page 21.",
+    "text": "Flow Chart in Hearing of Student Cases\n Complaints shall be filed at the POD who has\njurisdictiononly in cases where Student/s are the\nrespondents.\n\n POD conducts preliminary investigation and evaluation \nto determine prima facie evidence\n Cases are categorized into three;\na. cases with equivalent sanction of suspention 1-10\ndays with or without community service\nb. cases with equivalent sanction of suspension 22-20\ndays with or without community service\nc. cases recommended for Committee on Decorum and upon discretion of the POD (based onthe complexity of the case)\nAll cases will be heard with strict observance of due\nprocess\n AFter hearing of the case, decision/recommednation\nwill be formulated for implementation/approval of the concerned office/s\n Appeal of cases with equivalent penalty of suspension\nof less than 20% of the prescribed class days for the\nschool year with or without community service\nimposed by the POD shall be filed with the Office of\nthe Principal while cases handled by the CDI and those \nwith equivalent sanction of non-readmission and/or\nexpulsionshall be filed to the Office of Executive Vice President\n Decision shall become final and executory after 10\ndays if no appeal is filed\n\nStep 1: Start\nThe process begins when an incident is reported.\n\nStep 2: Complaint Received\nComplaints shall be filed at the Prefect of Discipline (POD), which has jurisdiction only in cases where students are the respondents.\n\nStep 3: Preliminary Investigation & Evaluation\nThe POD conducts a preliminary investigation and evaluation to determine prima facie evidence.\n\nStep 4: Categorize the Case\nCases are categorized into three groups:\n\nCases with an equivalent sanction of suspension for 1–10 days with or without community service.\n\nCases with an equivalent sanction of suspension for 22–20 days with or without community service.\n\nCases recommended for the Committee on Decorum and Investigation (CDI), upon the discretion of the POD based on the complexity of the case.\n\nStep 5: Hearing Proper\nAll cases will be heard with strict observance of due process.\n\nStep 6: Decision & Recommendation\nAfter hearing the case, a decision or recommendation will be formulated for implementation and approval by the concerned office or offices.\n\nStep 7: Appeal Decision\n\nIf Appealed (Yes): The case is routed to the Concerned Office. Appeals for cases with an equivalent penalty of suspension of less than 20% of the prescribed class days for the school year (with or without community service) imposed by the POD shall be filed with the Office of the Principal. Cases handled by the CDI and those with an equivalent sanction of non-readmission and/or expulsion shall be filed with the Office of Executive Vice President. The office then formulates a final Decision & Recommendation.\n\nIf Not Appealed (No): Implementation takes effect after 10 days, as the decision becomes final and executory after 10 days.\n\nStep 8: End\nThe process concludes.\n"
+  }
+]

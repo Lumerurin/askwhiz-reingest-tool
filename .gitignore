@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+
+# Intermediate extraction output -- regenerable from uploads/*.pdf via the
+# app's "Process"/"Re-run" button (extract.py + normalize.py). chunks/ is the
+# frozen, curated corpus and IS tracked; raw/ and clean/ are not.
+raw/
+clean/
+
+# Transient upload staging file (app.py writes this, then renames it away)
+.upload_*.tmp.pdf
+.new_handbook.tmp.pdf
