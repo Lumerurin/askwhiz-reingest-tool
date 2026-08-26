@@ -113,7 +113,7 @@ async function loadDocs() {
 }
 
 function buildDocCard(d, review) {
-  const pending = review.filter((r) => r.status === "pending" || r.status === "needs_rerun");
+  const pending = review.filter((r) => r.status === "pending" || r.status === "needs_rerun" || r.status === "unverified");
   const card = document.createElement("div");
   card.className = "card";
 
@@ -159,11 +159,14 @@ function buildReviewItem(d, r) {
   const item = document.createElement("div");
   const resolved = r.status === "covered" || r.status === "cleared";
   item.className = "review-item" + (resolved ? " cleared" : "");
-  const reasonText = r.reasons.map((x) => REVIEW_REASON_TEXT[x] || x).join(" ");
+  const reasonText = r.reasons.length
+    ? r.reasons.map((x) => REVIEW_REASON_TEXT[x] || x).join(" ")
+    : "Manually corrected -- this page wasn't flagged automatically.";
   let statusLine = "";
   if (r.status === "covered") statusLine = `<div class="status-msg ok">Resolved with a manual correction (${esc(r.covering_authored_ids.join(", "))}).</div>`;
   if (r.status === "cleared") statusLine = `<div class="status-msg ok">Marked as fine${r.cleared_note ? ": " + esc(r.cleared_note) : "."}</div>`;
   if (r.status === "needs_rerun") statusLine = `<div class="status-msg bad">A correction was saved for this page, but the results haven't been re-processed yet -- click Process/Re-run above to apply it.</div>`;
+  if (r.status === "unverified") statusLine = `<div class="status-msg bad">A correction was started here (${esc(r.covering_authored_ids.join(", "))}) but hasn't been verified yet.</div>`;
 
   item.innerHTML = `
     <div class="img-wrap">
@@ -179,20 +182,34 @@ function buildReviewItem(d, r) {
   `;
   loadImage(item.querySelector(".img-wrap"), item.querySelector("img"), `/api/docs/${d.id}/pages/${r.page}/image`);
   const actionsWrap = item.querySelector(".review-actions");
-  if (r.status === "pending" || r.status === "needs_rerun") {
+  // "pending" only ever happens for an auto-flagged page (a manual page
+  // always has some authored entry touching it, so it's never "nothing done
+  // at all"). "needs_rerun" can happen for EITHER an auto-flagged page that
+  // now has a correction, or a manually-corrected page that was never
+  // flagged -- "Looks fine" only makes sense for the former, since the
+  // latter has no auto-detected flag to dismiss in the first place.
+  const wasFlagged = r.reasons.length > 0;
+  if (r.status === "pending" || (r.status === "needs_rerun" && wasFlagged)) {
     const fineBtn = document.createElement("button");
     fineBtn.className = "small-btn";
     fineBtn.textContent = "Looks fine";
     fineBtn.addEventListener("click", () => clearReviewItem(d.id, r.page));
+    actionsWrap.appendChild(fineBtn);
+  }
+  if (r.status === "pending" || r.status === "needs_rerun") {
     const fixBtn = document.createElement("button");
     fixBtn.className = "small-btn primary";
-    fixBtn.textContent = r.status === "needs_rerun" ? "Edit the correction" : "Type in the correct text";
-    fixBtn.addEventListener("click", () => startCorrection(d, r.page));
-    const viewBtn = document.createElement("button");
-    viewBtn.className = "small-btn";
-    viewBtn.textContent = "View full page";
-    viewBtn.addEventListener("click", () => openPageExplorer(d.id, r.page));
-    actionsWrap.append(fineBtn, fixBtn, viewBtn);
+    fixBtn.textContent = r.status === "needs_rerun" ? "Edit the correction" : "Fix this page";
+    fixBtn.addEventListener("click", () => openPageExplorer(d.id, r.page, { openCorrection: true }));
+    actionsWrap.appendChild(fixBtn);
+  } else if (r.status === "unverified") {
+    // No "Looks fine" here -- there's no auto-detected flag to dismiss, just
+    // an unfinished draft that needs finishing.
+    const finishBtn = document.createElement("button");
+    finishBtn.className = "small-btn primary";
+    finishBtn.textContent = "Finish & verify";
+    finishBtn.addEventListener("click", () => openPageExplorer(d.id, r.page, { openCorrection: true }));
+    actionsWrap.appendChild(finishBtn);
   } else {
     const undoBtn = document.createElement("button");
     undoBtn.className = "small-btn";
@@ -250,113 +267,29 @@ async function undoReviewItem(d, r) {
   }
 }
 
-// ------------------------------------------------- inline correction editor ---
-// Page-Explorer-style side by side: the actual page image and its raw
-// extracted text on the left/top for reference, an editable transcription on
-// the right/below -- so fixing a flagged page doesn't mean leaving the
-// Review tab to a bare form with no picture of what you're transcribing.
-
-async function startCorrection(d, page) {
-  const editor = $("#correction-editor");
-  editor.dataset.doc = d.id;
-  editor.dataset.docId = d.doc_id;
-  editor.dataset.page = page;
-
-  $("#correction-editor-title").textContent = `${d.source} — Page ${page}`;
-  loadImage($("#correction-image-wrap"), $("#correction-image"), `/api/docs/${d.id}/pages/${page}/image`);
-  $("#correction-extracted-text").textContent = "Loading...";
-  $("#correction-status").textContent = "";
-  editor.style.display = "block";
-  editor.scrollIntoView({ behavior: "smooth", block: "start" });
-
-  const authoredId = `page_${page}`;
-  const [pageData, existingTables] = await Promise.all([
-    fetchJSON(`/api/docs/${d.id}/pages/${page}/text`).catch(() => ({ text: "" })),
-    fetchJSON("/api/authored-tables").catch(() => []),
-  ]);
-  $("#correction-extracted-text").textContent = pageData.text || "(no extracted text)";
-
-  const existing = existingTables.find((t) => t.doc_id === d.doc_id && t.authored_id === authoredId);
-  $("#correction-title").value = existing ? existing.title : `Page ${page} (manual correction)`;
-  $("#correction-breadcrumb").value = existing ? existing.breadcrumb : `[${d.source}]`;
-  $("#correction-text").value = existing ? existing.text : (pageData.text || "");
-  $("#correction-verified").checked = existing ? !!existing.verified : false;
-  $("#correction-authored-by").value = existing ? (existing.authored_by || "") : rememberedAuthor();
-}
-
 function rememberedAuthor() {
   try { return localStorage.getItem("askwhiz_authored_by") || ""; } catch { return ""; }
 }
 
-$("#correction-cancel").addEventListener("click", () => {
-  $("#correction-editor").style.display = "none";
-});
-
-$("#correction-save").addEventListener("click", saveCorrection);
-
-async function saveCorrection() {
-  const editor = $("#correction-editor");
-  const doc = editor.dataset.doc;
-  const docId = editor.dataset.docId;
-  const page = Number(editor.dataset.page);
-  const authoredId = `page_${page}`;
-  const statusEl = $("#correction-status");
-
-  const text = $("#correction-text").value;
-  if (!text.trim()) {
-    statusEl.textContent = "Type in the correct text first.";
-    statusEl.className = "status-msg bad";
-    return;
-  }
-
-  const authoredBy = $("#correction-authored-by").value.trim();
-  const entry = {
-    doc_id: docId,
-    authored_id: authoredId,
-    title: $("#correction-title").value.trim(),
-    breadcrumb: $("#correction-breadcrumb").value.trim(),
-    covers_pages: [page],
-    pages: [page],
-    page_labels: [page],
-    verified: $("#correction-verified").checked,
-    authored_by: authoredBy,
-    authored_on: new Date().toISOString().slice(0, 10),
-    provenance: `Manually corrected via the Review tab for page ${page}.`,
-    text,
-  };
-  try { localStorage.setItem("askwhiz_authored_by", authoredBy); } catch { /* ignore */ }
-
-  const saveBtn = $("#correction-save");
-  setBtnBusy(saveBtn, true, "Saving...");
-  statusEl.textContent = ""; statusEl.className = "status-msg";
-  try {
-    const existing = await fetchJSON("/api/authored-tables");
-    const idx = existing.findIndex((t) => t.doc_id === docId && t.authored_id === authoredId);
-    const updated = idx >= 0
-      ? existing.map((t, i) => (i === idx ? entry : t))
-      : [...existing, entry];
-    await fetchJSON("/api/authored-tables", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tables: updated }),
-    });
-    editor.style.display = "none";
-    await loadReviewTab();
-  } catch (e) {
-    statusEl.textContent = "Failed: " + e.message;
-    statusEl.className = "status-msg bad";
-  } finally {
-    setBtnBusy(saveBtn, false);
-  }
-}
-
-async function openPageExplorer(doc, page) {
+/** Jumps to Page Explorer with a specific handbook/page selected -- used by
+ * both a manual "browse to a page" flow and the Review queue's "Fix this
+ * page" shortcut. `openCorrection` additionally expands and populates the
+ * correction editor built into that tab, so the deep link lands the user
+ * ready to type, not just looking. */
+async function openPageExplorer(doc, page, { openCorrection = false } = {}) {
   switchTab("pages");
   await populateDocSelect($("#pages-doc-select"));
   $("#pages-doc-select").value = doc;
   await loadPagesTab();
   $("#pages-page-select").value = String(page);
+  updatePagesPosition();
   await loadPageDetail();
+  if (openCorrection) {
+    const details = $("#correction-details");
+    details.open = true;
+    await loadCorrectionFields();
+    details.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
 }
 
 async function removeHandbook(doc, sourceName) {
@@ -559,7 +492,7 @@ async function loadReviewTab() {
   } else if (!review.length) {
     wrap.innerHTML = '<div class="gate-line ok">Everything looks good — nothing needs review.</div>';
   } else {
-    const pending = review.filter((r) => r.status === "pending" || r.status === "needs_rerun");
+    const pending = review.filter((r) => r.status === "pending" || r.status === "needs_rerun" || r.status === "unverified");
     const summary = document.createElement("div");
     summary.className = "gate-line " + (pending.length ? "bad" : "ok");
     summary.textContent = pending.length
@@ -765,6 +698,14 @@ function renderAuthoredTables(tables) {
 function buildAuthoredCard(t) {
   const card = document.createElement("div");
   card.className = "authored-card";
+  // Keep the full original object -- including any field this form has no
+  // input for (verified_by, verification_notes, supersedes, anything added
+  // later) -- so saving doesn't silently discard it. Previously
+  // collectAuthoredTables() rebuilt every card from scratch using only the
+  // known field names, which meant clicking "Save all" quietly stripped
+  // extra metadata off *every* entry on screen, not just the one you meant
+  // to edit.
+  card.authoredData = t;
   card.innerHTML = `
     <div class="row">
       <div class="field"><label>doc_id</label><input type="text" class="a-doc_id" value="${esc(t.doc_id || "")}"></div>
@@ -798,6 +739,7 @@ $("#tables-save").addEventListener("click", saveAuthoredTables);
 
 function collectAuthoredTables() {
   return $$(".authored-card").map((card) => ({
+    ...(card.authoredData || {}),
     doc_id: card.querySelector(".a-doc_id").value.trim(),
     authored_id: card.querySelector(".a-authored_id").value.trim(),
     title: card.querySelector(".a-title").value,
@@ -882,7 +824,198 @@ async function loadChunks() {
 // ======================================================== PAGES tab ====
 
 $("#pages-doc-select").addEventListener("change", loadPagesTab);
-$("#pages-page-select").addEventListener("change", loadPageDetail);
+$("#pages-page-select").addEventListener("change", () => { updatePagesPosition(); loadPageDetail(); });
+$("#pages-prev").addEventListener("click", () => stepPage(-1));
+$("#pages-next").addEventListener("click", () => stepPage(1));
+
+/** Moves the Page Explorer selection by `delta` options (±1) and loads it.
+ * Wired to the Prev/Next buttons and to the left/right arrow keys. */
+function stepPage(delta) {
+  const sel = $("#pages-page-select");
+  const i = sel.selectedIndex + delta;
+  if (i < 0 || i >= sel.options.length) return;
+  sel.selectedIndex = i;
+  loadPageDetail();
+  updatePagesPosition();
+}
+
+// ---- search within the extracted-text pane (Page Explorer) ----
+let currentPageText = "";
+let searchMatches = []; // [start, end] offsets into currentPageText
+let searchActiveIndex = -1;
+
+/** Re-renders #page-text from currentPageText, highlighting matches for
+ * whatever's typed in #page-text-search (case-insensitive substring). Kept
+ * as one function so both a fresh page load and a search keystroke can
+ * call it without duplicating the highlight-building logic. */
+function renderPageText() {
+  const el = $("#page-text");
+  const q = $("#page-text-search").value.trim();
+  if (!q) {
+    el.textContent = currentPageText;
+    searchMatches = [];
+    searchActiveIndex = -1;
+    updateSearchCount();
+    return;
+  }
+
+  const lowerText = currentPageText.toLowerCase();
+  const lowerQ = q.toLowerCase();
+  searchMatches = [];
+  let from = 0;
+  while (true) {
+    const at = lowerText.indexOf(lowerQ, from);
+    if (at === -1) break;
+    searchMatches.push([at, at + q.length]);
+    from = at + q.length;
+  }
+  if (searchActiveIndex < 0 && searchMatches.length) searchActiveIndex = 0;
+  if (searchActiveIndex >= searchMatches.length) searchActiveIndex = searchMatches.length - 1;
+
+  let html = "";
+  let last = 0;
+  searchMatches.forEach(([start, end], i) => {
+    html += esc(currentPageText.slice(last, start));
+    const cls = i === searchActiveIndex ? "search-hit search-hit-active" : "search-hit";
+    html += `<mark class="${cls}">${esc(currentPageText.slice(start, end))}</mark>`;
+    last = end;
+  });
+  html += esc(currentPageText.slice(last));
+  el.innerHTML = html;
+
+  updateSearchCount();
+  const active = $(".search-hit-active", el);
+  if (active) active.scrollIntoView({ block: "center" });
+}
+
+function updateSearchCount() {
+  const q = $("#page-text-search").value.trim();
+  $("#page-text-search-count").textContent = !q ? ""
+    : searchMatches.length ? `${searchActiveIndex + 1} of ${searchMatches.length}`
+    : "no matches";
+}
+
+function stepSearchMatch(delta) {
+  if (!searchMatches.length) return;
+  searchActiveIndex = (searchActiveIndex + delta + searchMatches.length) % searchMatches.length;
+  renderPageText();
+}
+
+$("#page-text-search").addEventListener("input", debounce(() => {
+  searchActiveIndex = 0;
+  renderPageText();
+}, 120));
+$("#page-text-search").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); stepSearchMatch(e.shiftKey ? -1 : 1); }
+  else if (e.key === "Escape" && e.target.value) { e.target.value = ""; renderPageText(); }
+});
+$("#page-text-search-next").addEventListener("click", () => stepSearchMatch(1));
+$("#page-text-search-prev").addEventListener("click", () => stepSearchMatch(-1));
+
+// ---- search within the (editable) correction textarea ----
+// A textarea can't render inline <mark> highlights the way the read-only
+// #page-text pane does, so this jumps the native text selection to each
+// match instead -- same idea as Ctrl+F in a plain text editor. Matches are
+// only recomputed here, not auto-jumped-to, on every keystroke in the
+// search box; jumping (which moves focus into the textarea to show the
+// selection) only happens on Enter or a Prev/Next click, so typing a
+// multi-character search term doesn't get interrupted by focus hopping
+// away after the first character.
+let correctionSearchMatches = [];
+let correctionSearchActiveIndex = -1;
+
+function computeCorrectionSearchMatches() {
+  const q = $("#correction-text-search").value.trim();
+  correctionSearchMatches = [];
+  if (!q) return;
+  const lower = $("#correction-text").value.toLowerCase();
+  const lowerQ = q.toLowerCase();
+  let from = 0;
+  while (true) {
+    const at = lower.indexOf(lowerQ, from);
+    if (at === -1) break;
+    correctionSearchMatches.push([at, at + q.length]);
+    from = at + q.length;
+  }
+}
+
+function updateCorrectionSearchCount() {
+  const q = $("#correction-text-search").value.trim();
+  let text = "";
+  if (q) {
+    if (!correctionSearchMatches.length) text = "no matches";
+    else if (correctionSearchActiveIndex < 0) {
+      text = correctionSearchMatches.length === 1 ? "1 match" : `${correctionSearchMatches.length} matches`;
+    } else {
+      text = `${correctionSearchActiveIndex + 1} of ${correctionSearchMatches.length}`;
+    }
+  }
+  $("#correction-text-search-count").textContent = text;
+}
+
+function goToCorrectionMatch(index) {
+  if (!correctionSearchMatches.length) { updateCorrectionSearchCount(); return; }
+  correctionSearchActiveIndex =
+    ((index % correctionSearchMatches.length) + correctionSearchMatches.length) % correctionSearchMatches.length;
+  const [start, end] = correctionSearchMatches[correctionSearchActiveIndex];
+  const textarea = $("#correction-text");
+  textarea.focus();
+  textarea.setSelectionRange(start, end);
+  updateCorrectionSearchCount();
+}
+
+function stepCorrectionSearchMatch(delta) {
+  if (!correctionSearchMatches.length) computeCorrectionSearchMatches();
+  goToCorrectionMatch(correctionSearchActiveIndex + delta);
+}
+
+/** Clears the correction-text search box/state -- called whenever the
+ * textarea's content is replaced wholesale (a new page loaded, or "use
+ * checked pieces" rebuilding it), since stale match offsets from the old
+ * text would otherwise point at the wrong place in the new text. */
+function resetCorrectionSearch() {
+  $("#correction-text-search").value = "";
+  correctionSearchMatches = [];
+  correctionSearchActiveIndex = -1;
+  updateCorrectionSearchCount();
+}
+
+$("#correction-text-search").addEventListener("input", debounce(() => {
+  computeCorrectionSearchMatches();
+  correctionSearchActiveIndex = -1;
+  updateCorrectionSearchCount();
+}, 120));
+$("#correction-text-search").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); stepCorrectionSearchMatch(e.shiftKey ? -1 : 1); }
+  else if (e.key === "Escape" && e.target.value) { e.target.value = ""; correctionSearchMatches = []; correctionSearchActiveIndex = -1; updateCorrectionSearchCount(); }
+});
+$("#correction-text-search-next").addEventListener("click", () => stepCorrectionSearchMatch(1));
+$("#correction-text-search-prev").addEventListener("click", () => stepCorrectionSearchMatch(-1));
+
+function updatePagesPosition() {
+  const sel = $("#pages-page-select");
+  const n = sel.options.length;
+  $("#pages-position").textContent = n ? `page ${sel.selectedIndex + 1} of ${n}` : "";
+  $("#pages-prev").disabled = sel.selectedIndex <= 0;
+  $("#pages-next").disabled = sel.selectedIndex >= n - 1;
+}
+
+// Left/Right arrow keys flip pages while the Pages tab is active, unless
+// the user is typing somewhere (an input/textarea/select, or with a
+// modifier key held for browser/OS shortcuts).
+document.addEventListener("keydown", (e) => {
+  if (!$("#tab-pages").classList.contains("active")) return;
+  if (e.altKey || e.ctrlKey || e.metaKey) return;
+  const tag = (e.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "textarea" || tag === "select") return;
+  if (e.key === "ArrowLeft") { e.preventDefault(); stepPage(-1); }
+  else if (e.key === "ArrowRight") { e.preventDefault(); stepPage(1); }
+});
+$("#correction-details").addEventListener("toggle", (e) => {
+  if (e.target.open) loadCorrectionFields();
+});
+$("#correction-save").addEventListener("click", saveCorrection);
+$("#supersede-use").addEventListener("click", useCheckedAsStartingPoint);
 
 async function initPagesTab() {
   await populateDocSelect($("#pages-doc-select"));
@@ -900,13 +1033,15 @@ async function loadPagesTab() {
     return `<option value="${p.page}">${p.page}${flags ? ` (${flags})` : ""}</option>`;
   }).join("");
   if (pages.some((p) => String(p.page) === prevPage)) sel.value = prevPage;
+  updatePagesPosition();
 
   if (pages.length) {
     await loadPageDetail();
   } else {
     $("#page-image-wrap").classList.remove("loading");
     $("#page-image").src = "";
-    $("#page-text").textContent = "";
+    currentPageText = "";
+    renderPageText();
     $("#page-spans").innerHTML = "";
     $("#pages-flags").textContent = "no extracted pages yet -- run the pipeline first";
   }
@@ -927,9 +1062,11 @@ async function loadPageDetail() {
   $("#pages-flags").textContent = "";
   $("#page-text").textContent = "Loading...";
   $("#page-spans").innerHTML = loadingBlock("Loading...");
+  $("#correction-status").textContent = "";
   const data = await fetchJSON(`/api/docs/${doc}/pages/${n}/text`);
   if (requestId !== pageDetailRequestId) return;
-  $("#page-text").textContent = data.text;
+  currentPageText = data.text;
+  renderPageText();
   const rows = data.spans.map((s) => `
     <tr class="${s.bold ? "span-bold" : ""}">
       <td>${s.size ?? ""}</td><td>${s.x0}</td><td>${s.wrapped ? "↵" : ""}</td><td>${esc(s.text)}</td>
@@ -937,6 +1074,217 @@ async function loadPageDetail() {
   $("#page-spans").innerHTML = `<table>
     <thead><tr><th>size</th><th>x0</th><th>wrap</th><th>text</th></tr></thead>
     <tbody>${rows}</tbody></table>`;
+  // If the correction panel is already open (e.g. the user is flipping
+  // through pages with it pinned open), keep it in sync with the new page
+  // instead of leaving yesterday's page's draft on screen.
+  if ($("#correction-details").open) await loadCorrectionFields();
+}
+
+/** Populates the correction editor for whichever handbook/page is currently
+ * selected in Page Explorer -- from an existing authored entry if one
+ * exists, otherwise the raw extracted text as a starting draft. Available
+ * for any page, not just ones the review queue flagged: the queue's
+ * heuristics catch tables and diagrams, not every kind of bad extraction
+ * (e.g. a two-column layout read in the wrong order). */
+// Populated by loadCorrectionFields(), read by useCheckedAsStartingPoint()
+// so the latter doesn't have to re-fetch chunks just to look up bodies.
+let currentPageCandidates = [];
+
+async function loadCorrectionFields() {
+  const doc = $("#pages-doc-select").value;
+  const n = $("#pages-page-select").value;
+  if (!doc || !n) return;
+  const page = Number(n);
+  const details = $("#correction-details");
+  const statusEl = $("#correction-status");
+  statusEl.textContent = ""; statusEl.className = "status-msg";
+
+  const [docs, existingTables, allChunks] = await Promise.all([
+    fetchJSON("/api/docs"),
+    fetchJSON("/api/authored-tables").catch(() => []),
+    fetchJSON(`/api/chunks/${doc}`).catch(() => []),
+  ]);
+  const d = docs.find((x) => x.id === doc);
+  if (!d) return;
+  details.dataset.doc = doc;
+  details.dataset.docId = d.doc_id;
+  details.dataset.page = String(page);
+
+  // A correction that covers several pages (a table that runs on, say)
+  // should show up and be editable from ANY of those pages, not just the
+  // one it happened to be started from -- otherwise a page-agnostic user
+  // landing on, e.g., page 27 of a page-25-anchored correction would have
+  // no idea one already exists, and could easily save a second, competing
+  // one. So look for coverage first, and only fall back to a fresh
+  // page-anchored id when nothing already covers this page.
+  const existing = existingTables.find((t) => t.doc_id === d.doc_id && (t.covers_pages || []).includes(page));
+  const authoredId = existing ? existing.authored_id : `page_${page}`;
+  details.dataset.authoredId = authoredId;
+  // Deliberately NOT pre-filled with the whole page's raw text for a new
+  // correction: that's what led to accidentally re-including content (like
+  // Vision/Core Values/Motto) that was already fine on its own. Check the
+  // broken pieces below and use them as a starting point instead.
+  $("#correction-title").value = existing ? existing.title : `Page ${page} (manual correction)`;
+  $("#correction-breadcrumb").value = existing ? existing.breadcrumb : `[${d.source}]`;
+  $("#correction-text").value = existing ? existing.text : "";
+  resetCorrectionSearch();
+  $("#correction-verified").checked = existing ? !!existing.verified : false;
+  $("#correction-authored-by").value = existing ? (existing.authored_by || "") : rememberedAuthor();
+
+  const rangeNote = $("#correction-page-range-note");
+  const coveredPages = existing ? (existing.covers_pages || []) : [];
+  rangeNote.textContent = coveredPages.length > 1
+    ? `This correction covers pages ${Math.min(...coveredPages)}–${Math.max(...coveredPages)} -- editing here updates it for all of them.`
+    : "";
+
+  const alreadyChosen = new Set(existing ? (existing.supersedes || []) : []);
+  currentPageCandidates = allChunks.filter(
+    (c) => c.source_type === "pdf_extraction" && (c.pages || []).includes(page)
+  );
+  const listEl = $("#supersede-list");
+  listEl.innerHTML = currentPageCandidates.length
+    ? currentPageCandidates.map((c) => {
+        const preview = c.chunk_text.length > 140 ? c.chunk_text.slice(0, 140) + "…" : c.chunk_text;
+        return `
+          <label class="supersede-row">
+            <input type="checkbox" class="supersede-check" value="${esc(c.chunk_id)}"
+              ${alreadyChosen.has(c.chunk_id) ? "checked" : ""}>
+            <span>
+              <strong>${esc(c.title)}</strong> <span class="hint">(${c.token_count} tok)</span>
+              <span class="supersede-preview">${esc(preview)}</span>
+            </span>
+          </label>`;
+      }).join("")
+    : '<p class="hint" style="margin:0;">No other extracted content on this page.</p>';
+}
+
+/** Strips a chunk's breadcrumb prefix off its chunk_text, leaving just the
+ * body -- chunker.py builds chunk_text as breadcrumb + "\n" + body, and
+ * pdf_extraction chunks don't carry the body separately the way authored
+ * entries do. */
+function chunkBody(c) {
+  const prefix = c.breadcrumb + "\n";
+  return c.chunk_text.startsWith(prefix) ? c.chunk_text.slice(prefix.length) : c.chunk_text;
+}
+
+function useCheckedAsStartingPoint() {
+  const checkedIds = new Set($$("#supersede-list .supersede-check:checked").map((cb) => cb.value));
+  const chosen = currentPageCandidates.filter((c) => checkedIds.has(c.chunk_id));
+  if (!chosen.length) {
+    alert("Check at least one piece above first.");
+    return;
+  }
+  $("#correction-text").value = chosen.map(chunkBody).join("\n\n");
+  resetCorrectionSearch();
+  if (chosen.length === 1) {
+    $("#correction-title").value = chosen[0].title;
+    $("#correction-breadcrumb").value = chosen[0].breadcrumb;
+  }
+}
+
+async function saveCorrection() {
+  const details = $("#correction-details");
+  const docId = details.dataset.docId;
+  const page = Number(details.dataset.page);
+  const statusEl = $("#correction-status");
+  if (!docId || !page) return;
+  // Whatever loadCorrectionFields() resolved this to -- either an existing
+  // entry's own id (if one already covers this page) or a fresh page_N id.
+  // Not recomputed from the page here, so saving from page 27 updates the
+  // same entry that was started on page 25 instead of forking a new one.
+  const authoredId = details.dataset.authoredId || `page_${page}`;
+
+  const text = $("#correction-text").value;
+  if (!text.trim()) {
+    statusEl.textContent = "Type in the correct text first.";
+    statusEl.className = "status-msg bad";
+    return;
+  }
+
+  const authoredBy = $("#correction-authored-by").value.trim();
+  const supersedes = $$("#supersede-list .supersede-check:checked").map((cb) => cb.value);
+  // A nudge, not a block: if this page has other extracted content but none
+  // of it got checked, the original text for it will still ship alongside
+  // whatever's being saved here. Sometimes that's correct (a table split
+  // across pages, already superseded from a different one of them) -- so
+  // this only asks, it doesn't refuse. Scoped to exactly what's being saved
+  // right now, rather than trying to infer intent for content elsewhere in
+  // the corpus after the fact (that approach was tried and produced false
+  // positives on perfectly fine, deliberately-untouched content).
+  if (currentPageCandidates.length && !supersedes.length) {
+    const proceed = confirm(
+      "None of the \"which extracted pieces are wrong\" boxes above are checked, so the original extracted " +
+      "text for this page will still show up in the results alongside what you're saving here.\n\n" +
+      "That's fine if it's already handled by a correction on another page (e.g. a table that continues there) " +
+      "-- otherwise, go back and check the piece(s) this is meant to replace.\n\n" +
+      "Save anyway?"
+    );
+    if (!proceed) return;
+  }
+  // A checked piece can itself span several pages (a table that runs on for
+  // pages, say) -- cover all of them, not just the page this editor happens
+  // to be anchored on, so the Review tab and gate checks recognize the fix
+  // on every page it actually touches. EXCEPT any page some other, separate
+  // correction already claims: without this, re-saving a page_25 entry
+  // whose checked chunk spans pages 25-29 would silently annex page 26 away
+  // from an intentionally separate page_26 entry on every save. Per-page
+  // splitting (one correction per page, all sharing the same checked box)
+  // is a legitimate way to work -- this just keeps it from self-colliding.
+  const existingBeforeSave = await fetchJSON("/api/authored-tables").catch(() => []);
+  const claimedByOthers = new Set(
+    existingBeforeSave
+      .filter((t) => t.doc_id === docId && t.authored_id !== authoredId)
+      .flatMap((t) => t.covers_pages || [])
+  );
+  const supersededChunks = currentPageCandidates.filter((c) => supersedes.includes(c.chunk_id));
+  const coveredPages = [...new Set([page, ...supersededChunks.flatMap((c) => c.pages || [])])]
+    .filter((p) => p === page || !claimedByOthers.has(p))
+    .sort((a, b) => a - b);
+  const entry = {
+    doc_id: docId,
+    authored_id: authoredId,
+    title: $("#correction-title").value.trim(),
+    breadcrumb: $("#correction-breadcrumb").value.trim(),
+    covers_pages: coveredPages,
+    pages: coveredPages,
+    page_labels: coveredPages,
+    verified: $("#correction-verified").checked,
+    authored_by: authoredBy,
+    authored_on: new Date().toISOString().slice(0, 10),
+    provenance: coveredPages.length > 1
+      ? `Manually corrected via Page Explorer for pages ${coveredPages.join(", ")}.`
+      : `Manually corrected via Page Explorer for page ${page}.`,
+    text,
+    supersedes,
+  };
+  try { localStorage.setItem("askwhiz_authored_by", authoredBy); } catch { /* ignore */ }
+
+  const saveBtn = $("#correction-save");
+  setBtnBusy(saveBtn, true, "Saving...");
+  statusEl.textContent = ""; statusEl.className = "status-msg";
+  try {
+    const existing = await fetchJSON("/api/authored-tables");
+    const idx = existing.findIndex((t) => t.doc_id === docId && t.authored_id === authoredId);
+    // Merge onto a copy of the existing entry rather than replacing it
+    // outright, so any field this form doesn't expose (verified_by, a
+    // future supersedes list, anything else) survives re-saving.
+    const merged = { ...(idx >= 0 ? existing[idx] : {}), ...entry };
+    const updated = idx >= 0
+      ? existing.map((t, i) => (i === idx ? merged : t))
+      : [...existing, merged];
+    await fetchJSON("/api/authored-tables", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tables: updated }),
+    });
+    statusEl.textContent = "Saved. Re-run this handbook on the Review tab to apply it to the corpus.";
+    statusEl.className = "status-msg ok";
+  } catch (e) {
+    statusEl.textContent = "Failed: " + e.message;
+    statusEl.className = "status-msg bad";
+  } finally {
+    setBtnBusy(saveBtn, false);
+  }
 }
 
 // ============================================================ init ====

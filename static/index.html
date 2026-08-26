@@ -14,11 +14,11 @@
   <nav id="tabs">
     <button data-tab="run" class="tab active">Handbooks</button>
     <button data-tab="review" class="tab">Review</button>
+    <button data-tab="pages" class="tab">Page Explorer</button>
     <span class="nav-divider">Advanced</span>
     <button data-tab="config" class="tab">Settings</button>
     <button data-tab="tables" class="tab">Manual Corrections</button>
     <button data-tab="chunks" class="tab">Browse Results</button>
-    <button data-tab="pages" class="tab">Page Explorer</button>
   </nav>
 </header>
 
@@ -55,39 +55,6 @@
       </div>
       <div id="review-summary"></div>
       <div id="review-run-result"></div>
-
-      <div id="correction-editor" class="correction-editor" style="display:none;">
-        <div class="row">
-          <h3 id="correction-editor-title"></h3>
-          <button type="button" id="correction-cancel" class="small-btn">Close</button>
-        </div>
-        <div class="page-review">
-          <div id="correction-image-wrap" class="page-image-wrap img-wrap">
-            <span class="spinner"></span>
-            <img id="correction-image" alt="page image">
-          </div>
-          <div class="page-text-wrap">
-            <h3>Extracted text (for reference)</h3>
-            <pre id="correction-extracted-text"></pre>
-            <h3>Correct transcription</h3>
-            <div class="field"><label>Title</label><input type="text" id="correction-title"></div>
-            <div class="field"><label>Breadcrumb</label><input type="text" id="correction-breadcrumb"></div>
-            <div class="field"><label>Text</label>
-              <textarea id="correction-text" rows="10"></textarea></div>
-            <div class="field"><label>Authored by</label>
-              <input type="text" id="correction-authored-by" placeholder="Your name"></div>
-            <label class="correction-verified-row">
-              <input type="checkbox" id="correction-verified">
-              I checked this against the page image above
-            </label>
-            <div class="row" style="margin-top:0.5rem;">
-              <button type="button" id="correction-save" class="primary">Save correction</button>
-              <span id="correction-status" class="status-msg"></span>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div id="review-list"></div>
     </div>
   </section>
@@ -151,8 +118,15 @@
         <label>Page
           <select id="pages-page-select"></select>
         </label>
+        <button type="button" id="pages-prev" class="small-btn" title="Previous page (&larr;)">&larr; Prev</button>
+        <button type="button" id="pages-next" class="small-btn" title="Next page (&rarr;)">Next &rarr;</button>
+        <span id="pages-position" class="status-msg"></span>
         <span id="pages-flags" class="status-msg"></span>
       </div>
+      <p class="hint">Any page can be corrected here, not just ones the review queue flagged -- its
+        heuristics catch tables and diagrams, but not everything (a two-column layout read in the
+        wrong order, for instance, won't trip any of them). If the extracted text doesn't match the
+        page, fix it below.</p>
       <div class="page-review">
         <div id="page-image-wrap" class="page-image-wrap img-wrap">
           <span class="spinner"></span>
@@ -160,9 +134,54 @@
         </div>
         <div class="page-text-wrap">
           <h3>Extracted text</h3>
+          <div class="row page-text-search-row">
+            <input type="search" id="page-text-search" placeholder="Search this page's text...">
+            <button type="button" id="page-text-search-prev" class="small-btn" title="Previous match (Shift+Enter)">&uarr;</button>
+            <button type="button" id="page-text-search-next" class="small-btn" title="Next match (Enter)">&darr;</button>
+            <span id="page-text-search-count" class="status-msg"></span>
+          </div>
           <pre id="page-text"></pre>
-          <h3>Spans (bold / size / x0 &mdash; used for heading detection)</h3>
-          <div id="page-spans"></div>
+
+          <details id="correction-details">
+            <summary>Correct this page's text</summary>
+            <p id="correction-page-range-note" class="status-msg ok"></p>
+            <div class="field">
+              <label>Which extracted pieces are wrong?</label>
+              <p class="hint" style="margin:0 0 0.4rem;">Check whatever's broken below -- a page often has
+                more than one piece on it, so leave anything that's already correct unchecked and it'll stay
+                untouched. Checked pieces are removed from the results once this is saved and re-run.</p>
+              <div id="supersede-list"></div>
+              <button type="button" id="supersede-use" class="small-btn" style="margin-top:0.6rem;">
+                Use checked pieces as a starting point</button>
+            </div>
+            <div class="field"><label>Title</label><input type="text" id="correction-title"></div>
+            <div class="field"><label>Breadcrumb</label><input type="text" id="correction-breadcrumb"></div>
+            <div class="field">
+              <label>Text</label>
+              <div class="row correction-text-search-row">
+                <input type="search" id="correction-text-search" placeholder="Find in this text...">
+                <button type="button" id="correction-text-search-prev" class="small-btn" title="Previous match (Shift+Enter)">&uarr;</button>
+                <button type="button" id="correction-text-search-next" class="small-btn" title="Next match (Enter)">&darr;</button>
+                <span id="correction-text-search-count" class="status-msg"></span>
+              </div>
+              <textarea id="correction-text" rows="10"></textarea>
+            </div>
+            <div class="field"><label>Authored by</label>
+              <input type="text" id="correction-authored-by" placeholder="Your name"></div>
+            <label class="correction-verified-row">
+              <input type="checkbox" id="correction-verified">
+              I checked this against the page image above
+            </label>
+            <div class="row" style="margin-top:0.5rem;">
+              <button type="button" id="correction-save" class="primary">Save correction</button>
+              <span id="correction-status" class="status-msg"></span>
+            </div>
+          </details>
+
+          <details>
+            <summary>Spans (bold / size / x0 &mdash; used for heading detection)</summary>
+            <div id="page-spans"></div>
+          </details>
         </div>
       </div>
     </div>

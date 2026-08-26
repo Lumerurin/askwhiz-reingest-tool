@@ -195,23 +195,48 @@ def slugify(s: str) -> str:
     return s or "handbook"
 
 
-def scan_doc_for_review(doc_cfg: dict) -> list:
+# doc -> (cache key, flags). The key is (pdf mtime, suppress_pages) so a
+# replaced PDF or an edited suppress list invalidates it automatically;
+# anything else about the handbook doesn't affect what this scan finds.
+_SCAN_CACHE: dict = {}
+
+
+def scan_doc_for_review(doc_cfg: dict, doc: Optional[str] = None) -> list:
     """Find pages likely to have extracted badly: a promised table that
     didn't parse, a page with no text but an image (scanned/raster page), or
     a page dense with vector shapes and no table (a flowchart/diagram --
     pdfplumber reads its boxes in a linear order that scrambles the text).
-    Mirrors verify_extraction.py's checks, plus the diagram heuristic."""
+    Mirrors verify_extraction.py's checks, plus the diagram heuristic.
+
+    This runs on every Review/Handbooks tab load, for every handbook.
+    Accessing *any* of page.rects/.lines/.curves/.find_tables()/.extract_text()
+    makes pdfplumber lazily parse that page's full content stream on first
+    touch -- so avoiding one of those calls doesn't help, all of them pay the
+    same underlying cost. The PDF itself doesn't change between requests, so
+    the real fix is caching the scan's result, not any one call inside it."""
     pdf_path = pdf_path_for(doc_cfg)
     if not pdf_path.exists():
         return []
+
+    cache_key = (pdf_path.stat().st_mtime, tuple(sorted(doc_cfg["suppress_pages"])))
+    cache_id = doc or str(pdf_path)
+    cached_key, cached_flags = _SCAN_CACHE.get(cache_id, (None, None))
+    if cached_key == cache_key:
+        return cached_flags
+
     import pdfplumber
     suppressed = set(doc_cfg["suppress_pages"])
+    raw_dir = RAW_DIR / doc if doc else None
     flags = []
     with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages:
             if page.page_number in suppressed:
                 continue
-            text = page.extract_text() or ""
+            cached = raw_dir / f"{page.page_number}.txt" if raw_dir else None
+            if cached and cached.exists():
+                text = cached.read_text(encoding="utf-8")
+            else:
+                text = page.extract_text() or ""
             tables = extract.real_tables(page)
             vec_shapes = len(page.rects) + len(page.lines) + len(page.curves)
             reasons = []
@@ -223,6 +248,7 @@ def scan_doc_for_review(doc_cfg: dict) -> list:
                 reasons.append("complex_diagram")
             if reasons:
                 flags.append({"page": page.page_number, "reasons": reasons})
+    _SCAN_CACHE[cache_id] = (cache_key, flags)
     return flags
 
 
@@ -233,33 +259,55 @@ def frozen_authored_chunks(doc_cfg: dict) -> dict:
     return {c["chunk_id"]: c for c in load_chunks(doc_cfg) if c.get("source_type") == "table_transcription"}
 
 
+def _covering_status(page: int, authored: list, doc_cfg: dict, frozen: dict):
+    """For one page: which authored entries (verified or not) cover it, and
+    whether the verified ones are actually baked into the frozen corpus yet.
+    Shared between auto-flagged pages and manually-corrected-but-never-
+    flagged ones, so both go through the same staleness check."""
+    covering_verified, covering_unverified, stale = [], [], False
+    for a in authored:
+        if page not in a.get("covers_pages", []):
+            continue
+        if not a.get("verified"):
+            covering_unverified.append(a["authored_id"])
+            continue
+        covering_verified.append(a["authored_id"])
+        cid = f"{doc_cfg['doc_id']}_authored_{a['authored_id']}"
+        frozen_chunk = frozen.get(cid)
+        expected_text = a["breadcrumb"] + "\n" + a["text"]
+        if frozen_chunk is None or frozen_chunk.get("chunk_text") != expected_text:
+            stale = True
+    return covering_verified, covering_unverified, stale
+
+
 def review_items_for(doc: str, doc_cfg: dict) -> list:
     """Live-scan a doc for risky pages and merge in what's already resolved:
     covered by a verified authored chunk, or explicitly cleared by a human.
+    ALSO surfaces pages that were never auto-flagged but do have a manual
+    correction (from Page Explorer, not tied to any heuristic) -- otherwise
+    those only ever showed up in the separate Manual Corrections tab, with
+    no link back to the page they belong to. Everything comes back sorted by
+    page number, flagged or not.
 
     A verified authored_tables.json entry only counts as "covered" if it's
     actually present in the frozen chunks -- otherwise the review queue would
     show a page as fixed the instant someone hits Save, even though the real
     corpus (what a chunker.py run last produced) still has the old content
     until the pipeline is re-run. "needs_rerun" makes that gap visible
-    instead of silently passing."""
-    flags = scan_doc_for_review(doc_cfg)
+    instead of silently passing. "unverified" is the same gap for a page
+    that was never flagged: a draft correction exists but hasn't been
+    checked against the printed page yet, so it isn't safe to trust either."""
+    flags = scan_doc_for_review(doc_cfg, doc)
     authored = [a for a in read_authored() if a.get("doc_id") == doc_cfg["doc_id"]]
     cleared = read_review_state().get(doc, {})
     frozen = frozen_authored_chunks(doc_cfg)
 
     out = []
+    flagged_pages = set()
     for f in flags:
         page = f["page"]
-        verified_here = [a for a in authored if page in a.get("covers_pages", []) and a.get("verified")]
-        covering, stale = [], False
-        for a in verified_here:
-            covering.append(a["authored_id"])
-            cid = f"{doc_cfg['doc_id']}_authored_{a['authored_id']}"
-            frozen_chunk = frozen.get(cid)
-            expected_text = a["breadcrumb"] + "\n" + a["text"]
-            if frozen_chunk is None or frozen_chunk.get("chunk_text") != expected_text:
-                stale = True
+        flagged_pages.add(page)
+        covering, unverified, stale = _covering_status(page, authored, doc_cfg, frozen)
         if covering and stale:
             status = "needs_rerun"
         elif covering:
@@ -270,6 +318,20 @@ def review_items_for(doc: str, doc_cfg: dict) -> list:
             status = "pending"
         out.append({**f, "status": status, "covering_authored_ids": covering,
                      "cleared_note": cleared.get(str(page), {}).get("note")})
+
+    manual_pages = sorted({p for a in authored for p in a.get("covers_pages", [])} - flagged_pages)
+    for page in manual_pages:
+        covering, unverified, stale = _covering_status(page, authored, doc_cfg, frozen)
+        if covering and stale:
+            status = "needs_rerun"
+        elif covering:
+            status = "covered"
+        else:
+            status = "unverified"
+        out.append({"page": page, "reasons": [], "status": status,
+                     "covering_authored_ids": covering or unverified, "cleared_note": None})
+
+    out.sort(key=lambda item: item["page"])
     return out
 
 
@@ -410,6 +472,18 @@ def remove_handbook(doc: str):
     if state.pop(doc, None) is not None:
         write_review_state(state)
 
+    # Otherwise these become orphans that outlive the handbook they were
+    # transcribed for. Worse than clutter: a doc_id is derived from the
+    # handbook's name-slug, so re-adding a *different* PDF that happens to
+    # slug to the same id would silently inherit the old correction and show
+    # a page as "covered" with someone else's transcribed content.
+    authored = read_authored()
+    kept = [a for a in authored if a.get("doc_id") != d["doc_id"]]
+    if len(kept) != len(authored):
+        tmp = AUTHORED_PATH.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(kept, indent=2, ensure_ascii=False), encoding="utf-8")
+        tmp.replace(AUTHORED_PATH)
+
     return {"removed": doc, "warnings": warnings}
 
 
@@ -450,7 +524,7 @@ def get_gates():
             gate1.append({"doc": doc, "ok": False, "message": f"PDF not found: {d['pdf_filename']}", "log": ""})
         else:
             gate1.append({"doc": doc, **call_gate(ingest.gate_drift, doc, str(pdf_path), True)})
-        pending = [i for i in review_items_for(doc, d) if i["status"] in ("pending", "needs_rerun")]
+        pending = [i for i in review_items_for(doc, d) if i["status"] in ("pending", "needs_rerun", "unverified")]
         gate3.append({"doc": doc, "ok": not pending, "pending": pending})
     gate2 = call_gate(ingest.gate_authored, CHUNKS_DIR, True)
     return {"gate1": gate1, "gate2": gate2, "gate3": gate3}
@@ -520,7 +594,7 @@ def run_pipeline(req: RunRequest):
     result["gate3"] = []
     for doc in docs:
         d = cfg["docs"][doc]
-        pending = [i for i in review_items_for(doc, d) if i["status"] in ("pending", "needs_rerun")]
+        pending = [i for i in review_items_for(doc, d) if i["status"] in ("pending", "needs_rerun", "unverified")]
         g3 = {"doc": doc, "ok": not pending, "pending": pending}
         result["gate3"].append(g3)
         if pending and not req.skip_gates:

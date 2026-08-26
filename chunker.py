@@ -347,6 +347,32 @@ def main():
                 failures = [f for f in failures
                             if not any(f"page(s) [{p}]" in f or f"page(s) {sorted(covered)}" in f
                                        for p in covered)]
+
+    # A verified correction can explicitly name which raw section(s) it
+    # replaces (by chunk_id, in its "supersedes" list) -- those get dropped
+    # so the corpus doesn't carry both the clean transcription and whatever
+    # scrambled/garbled text the parser produced for the same content. This
+    # is deliberately NOT inferred from page overlap: a single page routinely
+    # holds more than one unrelated section (e.g. college p.27 has both an
+    # "Award for Two-Year Programs" paragraph and the separate Latin Honors
+    # table), so "every section touching a corrected page" would silently
+    # delete real, unrelated content. Only an explicit, human-picked
+    # chunk_id is safe to drop.
+    supersede_ids = set()
+    for a in authored:
+        if a.get("verified"):
+            supersede_ids.update(a.get("supersedes", []))
+
+    superseded = []
+    kept_chunks, kept_token_counts = [], []
+    for c, tc in zip(chunks, token_counts):
+        if c["chunk_id"] in supersede_ids:
+            superseded.append(f"{c['title']!r} (p.{c['pages']})")
+        else:
+            kept_chunks.append(c)
+            kept_token_counts.append(tc)
+    chunks, token_counts = kept_chunks, kept_token_counts
+
     chunks.extend(authored)
 
     with outfile.open("w", encoding="utf-8") as f:
@@ -359,6 +385,8 @@ def main():
     print(f"  tokens: median {int(statistics.median(token_counts))}, "
           f"p90 {int(statistics.quantiles(token_counts, n=10)[8])}, max {max(token_counts)}")
     print(f"  chunks under {args.min_words} words after merging: {short}")
+    if superseded:
+        print(f"  superseded by a verified correction, dropped from output: {', '.join(superseded)}")
     print(f"  -> {outfile}")
 
     if failures:
