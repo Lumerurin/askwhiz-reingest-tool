@@ -19,23 +19,104 @@ python app.py
 
 Then open `http://127.0.0.1:8000`.
 
-## How it works
+## Using the app
 
-1. **Add a handbook** — upload any handbook PDF and give it a name. It's extracted and chunked
-   automatically with generic settings (no tuning required to get a first pass).
-2. **Review** — pages the pipeline is unsure about get flagged automatically:
-   - the text promises a table ("the table below shows...") but none was detected,
-   - a page has no extractable text but does have an image (likely scanned),
-   - a page is dense with vector graphics and no detected table (likely a diagram/flowchart, whose
-     text usually gets extracted in a visually-scrambled reading order).
+The app has three main tabs (**Handbooks**, **Review**, **Page Explorer**) for everyday work, and
+three **Advanced** ones (**Settings**, **Manual Corrections**, **Browse Results**) for tuning and
+inspection. Day to day, you'll mostly live in the first three.
 
-   Each flagged page shows the actual PDF page image next to its raw extracted text, so you can
-   either mark it "looks fine" or type in the correct transcription right there, side by side.
-3. **Settings** (Advanced) — per-handbook tuning: pages to skip (cover/TOC), known typo fixes, and
-   how headings are detected (font size/weight, left-margin position). Existing handbooks already
-   have this tuned; new ones work fine without it and lean on the review queue instead.
-4. **Browse Results / Page Explorer** (Advanced) — inspect the frozen chunks, or a single page's
-   extracted text and font/position spans, for debugging.
+### 1. Handbooks — add one, see its status
+
+Give it a name (and optionally who it's for), pick a PDF, and click **Add & process**. It's
+extracted and chunked automatically with generic settings — no tuning needed to get a first pass,
+even for a handbook the pipeline has never seen before. Each card shows whether it's been processed
+and how many pages still need a look; click a card to jump straight into reviewing it.
+
+Removing a handbook also removes any corrections you'd authored for it.
+
+### 2. Review — everything that needs a human look, one page-sorted list
+
+Pick a handbook to see every page worth attention, in page order. Two kinds of pages land here:
+
+- **Auto-flagged pages** — the pipeline noticed something on its own: the text promises a table
+  ("the table below shows...") but none was detected, a page has no extractable text but does have
+  an image (likely scanned), or a page is dense with vector graphics and no detected table (likely a
+  diagram/flowchart, whose text usually comes out in a scrambled reading order).
+- **Manually-corrected pages** — anything you've typed a correction for in Page Explorer, even if
+  the automatic scan never flagged it. This is important: the scan's heuristics catch tables and
+  diagrams, but not everything — a two-column layout read in the wrong order, for instance, won't
+  trip any of them, so being able to fix *any* page and have it show up here matters.
+
+Each page shows a status and the buttons that make sense for it:
+
+| Status | Meaning | What you can do |
+|---|---|---|
+| **pending** | Auto-flagged, nothing done yet | **Looks fine** (dismiss it, optionally with a note) or **Fix this page** (opens the correction editor in Page Explorer) |
+| **covered** | A verified correction is saved *and already baked into the corpus* | **Unverify correction**, if you need to redo it |
+| **needs_rerun** | A verified correction is saved, but the pipeline hasn't been re-run since — so it's not live yet | **Edit the correction**, or just go re-run the pipeline (see below) |
+| **unverified** | A draft correction exists but hasn't been checked against the real page image yet | **Finish & verify** |
+| **cleared** | You marked this page fine as-is | shown greyed out, with your note if you left one |
+
+A saved correction never silently "just works" — it only counts once the pipeline has actually been
+re-run with it in place. Click **Process** at the top of the Review tab to re-run the pipeline for
+the selected handbook; do this after saving any correction (or a batch of them) so `needs_rerun`
+pages go live.
+
+### 3. Page Explorer — look at any page, fix any page
+
+Pick a handbook and a page. Besides the page dropdown, you can step through pages with the
+**← Prev / Next →** buttons or the left/right arrow keys (these don't interfere with typing in any
+text field). A "page X of N" indicator shows where you are.
+
+The page image sits next to its extracted text, with a **search box** above the text so you can
+find a word or phrase on the current page — matches are highlighted, Enter/Shift+Enter or the ↑/↓
+buttons cycle between them, and your search term carries over as you flip pages.
+
+**Correcting a page's text** works on *any* page, not just ones the Review queue flagged:
+
+1. Open **Correct this page's text**. If the page has other separately-extracted pieces of content
+   on it, they're listed as checkboxes — check whichever ones are actually wrong; leave anything
+   that's already fine unchecked, and it stays untouched.
+2. Click **Use checked pieces as a starting point** to pull just those checked pieces' text into the
+   box below, as a draft to clean up. (This is deliberate: pre-filling the *whole* page's text was
+   tried and led to accidentally re-touching content that was already fine.)
+3. Edit the **Text** field — it has its own find box above it, useful for jumping around in a long
+   correction (it moves your cursor/selection to each match rather than highlighting, since a plain
+   text box can't do inline highlighting).
+4. Fill in **Title**, **Breadcrumb**, and **Authored by** (remembered across sessions), check
+   **I checked this against the page image above** once you actually have, and **Save**.
+
+A few things worth knowing:
+
+- **If a correction spans several pages** (a table that runs on for pages, say), just check the
+  piece that spans them — the correction will cover every page that piece touches, and opening the
+  correction editor from *any* of those pages will find and let you edit that same entry, instead of
+  only recognizing it on the page you first saved it from.
+- **If you save without checking any of the boxes** on a page that does have other extracted content,
+  you'll get a warning that the original extracted text will still show up in the results alongside
+  what you're saving. That's expected and fine if it's already handled by a correction on another
+  page (e.g. a multi-page table you're splitting one page at a time) — otherwise, go back and check
+  the piece it's meant to replace.
+- Saving doesn't apply anything to the corpus by itself — go back to **Review** and click **Process**
+  to re-run the pipeline and bake it in.
+
+### 4. Settings (Advanced)
+
+Per-handbook fine-tuning: which pages to skip (cover, table of contents), running headers to strip,
+known typos to fix, and how headings are detected (font weight/size, left-margin position). New
+handbooks work fine with none of this set — these are refinements you reach for if the review queue
+keeps flagging the same kind of thing, not requirements for a first pass.
+
+### 5. Manual Corrections (Advanced)
+
+A flat list of every authored correction across every handbook, editable in bulk. Most day-to-day
+correction work happens through Review + Page Explorer now, since that surfaces every correction
+(finished or still a draft) in one page-sorted list right next to the page image — this tab is more
+useful for a bird's-eye view across a whole handbook, or bulk edits.
+
+### 6. Browse Results (Advanced)
+
+Inspect the frozen chunks for a handbook — search by text, or download the raw `.jsonl`.
 
 ## The gates
 
@@ -45,7 +126,7 @@ Ported from the original CLI pipeline (`ingest.py`) and extended in the app:
 |---|---|---|
 | 1 — drift | PDF page count vs. what `pipeline_config.json` expects | a new edition doesn't match the config it was tuned against |
 | 2 — authored tables | Required hand-transcribed tables are present *and verified* | a required correction is missing or unverified |
-| 3 — review queue | Every auto-flagged page has been resolved | a flagged page is still pending, or a saved correction hasn't been re-processed into the corpus yet |
+| 3 — review queue | Every flagged or manually-corrected page is resolved | a page is still `pending`, `unverified`, or a saved correction hasn't been re-processed (`needs_rerun`) |
 
 All three are re-checked live from the actual frozen corpus, not from in-progress edits — so the app
 can't report a clean pass while a saved-but-not-yet-applied correction sits stale.
