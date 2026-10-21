@@ -2,10 +2,12 @@
 """
 ingest.py — AskWhiz v2, handbook corpus, one-command re-ingest.
 
-    ingest.py  ==  extract -> normalize -> chunk -> [GATE] -> embed(stub) -> [GATE]
+    ingest.py  ==  extract -> normalize -> chunk -> [GATE 2] -> embed + index -> [GATE 3]
+                   (GATE 1, the drift check, runs before extract)
 
 Runs the whole handbook pipeline end to end for BOTH handbooks, enforces the
-drift gates that don't need AWS, and stops at a clearly marked embed stub.
+drift gates, and (with --embed) builds the search index and checks it against
+the gold questions.
 
 WHY THIS EXISTS
     You asked to package the pipeline so a new handbook edition can be fed in.
@@ -19,28 +21,26 @@ WHY THIS EXISTS
     the tables. The app makes that human work findable and required, not
     optional.
 
-WHAT IT DOES NOT DO
-    It does not embed. The AWS account does not exist yet, and even once it
-    does, S3 Vectors freezes an index's dimension and filterable-metadata keys
-    at creation time -- decisions that belong to a human, not a wrapper. The
-    embed step is a stub with the exact Bedrock + s3vectors calls documented
-    inside it, ready to fill when the account is live. Until then, ingest.py
-    produces the frozen chunks and stops -- which is genuinely the whole
-    knowledge-base-making job minus the final upload.
+EMBED + INDEX (no cloud)
+    AWS was dropped (Oct 2026). Steps 7-8 now run locally: build_index.py
+    splits each chunk into small labelled passages, embeds them with a small
+    local model (bge-small-en-v1.5 via fastembed), and writes an index folder
+    the chatbot loads at startup. It always writes a NEW folder; a person points
+    the chatbot at it only after GATE 3 passes.
 
 USAGE
     python ingest.py --pdf-college MCM-HANDBOOK-2020-COLLEGE.pdf \
                      --pdf-shs     MCM-HANDBOOK-2020-SHS.pdf \
                      --authored    authored_tables.json \
-                     --workdir     build
+                     --workdir     build --embed
 
-    Add --embed once AWS exists and the stub is filled (it will refuse until
-    then). Add --skip-gates only to reproduce a known-good build; never on a
-    new edition.
+    Leave out --embed to stop after the chunks. Add --skip-gates only to
+    reproduce a known-good build; never on a new edition.
 
 REQUIREMENTS
-    pip install pdfplumber
-    extract.py, normalize.py, chunker.py in the same directory.
+    pip install -r requirements.txt   (pdfplumber, fastembed, numpy)
+    extract.py, normalize.py, chunker.py, passages.py, build_index.py,
+    retrieve.py and gold_expected.json in the same directory.
 """
 
 import argparse
@@ -51,31 +51,21 @@ import subprocess
 import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
-DEFAULT_CONFIG = HERE / "pipeline_config.json"
 
+# What CONFIG in the sub-scripts was tuned against. If a new PDF's shape differs
+# from this, the gates fire. Update these numbers ONLY after re-verifying the
+# corresponding CONFIG entries by hand against the new printed pages.
+EXPECTED = {
+    "college": {"pages_in": 65, "suppress": [1, 2, 3], "page_label_offset": -1},
+    "shs":     {"pages_in": 31, "suppress": [1, 2],    "page_label_offset": 0},
+}
 
-def load_pipeline_config(config_path=DEFAULT_CONFIG):
-    """EXPECTED and REQUIRED_AUTHORED both come from pipeline_config.json
-    (shared with normalize.py and chunker.py) so the app can edit them in one
-    place. EXPECTED is what CONFIG in the sub-scripts was tuned against -- if
-    a new PDF's shape differs from this, the gates fire. Update these numbers
-    ONLY after re-verifying the corresponding config entries by hand against
-    the new printed pages. REQUIRED_AUTHORED lists the hand-transcribed table
-    chunks that MUST be present and verified before a corpus is allowed to
-    freeze."""
-    all_cfg = json.loads(pathlib.Path(config_path).read_text(encoding="utf-8"))
-    expected = {
-        doc: {
-            "pages_in": d["expected_pages_in"],
-            "suppress": d["suppress_pages"],
-            "page_label_offset": d["page_label_offset"],
-        }
-        for doc, d in all_cfg["docs"].items()
-    }
-    return expected, all_cfg["required_authored"]
-
-
-EXPECTED, REQUIRED_AUTHORED = load_pipeline_config()
+# Authored table chunks that MUST be present and verified before a corpus is
+# allowed to freeze. These are the four hand-transcribed tables.
+REQUIRED_AUTHORED = {
+    "handbook_college": ["academic_status_gwa", "latin_honors_gwa", "grading_scale"],
+    "handbook_shs":     ["grade_transmutation"],
+}
 
 
 def run(cmd):
@@ -149,44 +139,47 @@ def gate_authored(chunks_dir, gates_on):
         print("  gate 2 ok: all required table transcriptions present and verified.")
 
 
-def embed_stub(chunks_dir, do_embed):
-    """The one AWS-touching step. Deliberately unimplemented.
+GOLD_MIN_HIT5 = 18          # of 20 gold questions must appear in the top 5
+GOLD_MUST_BE_FIRST = ["What is the school motto?"]   # the v1 bug, never again
 
-    When the AWS account exists, fill this in. Confirmed from AWS docs
-    (Dec 2025 S3 Vectors GA, available in ap-southeast-1):
 
-      1. For each chunk, compute its embedding:
-           bedrock-runtime invoke_model
-             model_id = "amazon.titan-embed-text-v2:0"
-             body = {"inputText": chunk["chunk_text"], "dimensions": DIM}
-         DIM is 1024 or 512 -- but S3 Vectors FREEZES dimension at index
-         creation, so a 512 experiment is a SEPARATE index, not a re-config.
-         Titan throttles on requests/minute, not tokens: batch + backoff.
-         132 chunks is fine; BoldDesk's thousands will throttle -- build the
-         backoff now.
+def build_and_check_index(chunks_dir, index_dir, gold_path, gates_on, no_dense=False):
+    """Steps 7-8 (embed + index) and GATE 3 (gold smoke test).
 
-      2. Create (or reuse) the vector index with:
-           - dimension = DIM
-           - 'audience' declared as a FILTERABLE metadata key (college/shs
-             pre-filter; frozen at creation, cannot add later)
-           - embedding_model + dimensions recorded in index metadata
-
-      3. PUT each vector with its metadata (audience, chunk_id, page_labels,
-         source_type, breadcrumb) via s3vectors put-vectors.
-
-      4. Do NOT flip the live alias here. Build a NEW versioned index, run the
-         gold smoke test against it, and flip the alias as a deliberate human
-         step only after the DPO sign-off exists.
+    Builds a NEW index folder with build_index.py (local embedding model, no
+    cloud, no per-use cost), then runs the gold questions against it. The
+    chatbot is only pointed at this folder by a person, after this passes.
     """
-    if not do_embed:
-        print("\n  embed: SKIPPED (stub). Corpus is built and frozen; the only "
-              "remaining step is uploading vectors to S3 Vectors, which needs "
-              "the AWS account. See embed_stub() for the exact calls.")
-        return
-    raise SystemExit(
-        "\n! --embed was requested but the embed step is still a stub.\n"
-        "  Fill in embed_stub() with the Bedrock + s3vectors calls once the\n"
-        "  AWS account exists. Refusing to pretend an index was built.")
+    files = sorted(str(f) for f in chunks_dir.glob("*.chunks.jsonl"))
+    cmd = [sys.executable, HERE / "build_index.py", "--chunks", *files, "--out", index_dir]
+    if no_dense:
+        cmd.append("--no-dense")
+    print(run(cmd))
+
+    print("=== GATE 3: gold smoke test (post-index) ===")
+    sys.path.insert(0, str(HERE))
+    from retrieve import Retriever
+    r = Retriever(index_dir, use_dense=not no_dense)
+    gold = json.loads(pathlib.Path(gold_path).read_text(encoding="utf-8"))
+    problems, hit5 = [], 0
+    for g in gold:
+        ids = [h["chunk_id"] for h in r.search(g["q"], audience=g["audience"], k=5)]
+        rank = next((i + 1 for i, c in enumerate(ids) if c in g["expect"]), None)
+        if rank:
+            hit5 += 1
+        if g["q"] in GOLD_MUST_BE_FIRST and rank != 1:
+            problems.append(f"'{g['q']}' must rank its answer first; got rank {rank}")
+    print(f"  {hit5}/{len(gold)} gold questions found in the top 5")
+    if hit5 < GOLD_MIN_HIT5:
+        problems.append(f"only {hit5}/{len(gold)} gold questions in the top 5 (need {GOLD_MIN_HIT5})")
+    if problems:
+        msg = "GATE 3 (gold smoke test): " + "; ".join(problems) + \
+              ". Do NOT point the chatbot at this index. Run eval_gold.py for details."
+        if gates_on:
+            raise SystemExit("\n! " + msg)
+        print("\n! WARNING (gate skipped): " + msg)
+    else:
+        print("  gate 3 ok: search finds the gold answers.")
 
 
 def main():
@@ -196,7 +189,12 @@ def main():
     ap.add_argument("--authored", required=True)
     ap.add_argument("--workdir", default="build")
     ap.add_argument("--embed", action="store_true",
-                    help="upload to S3 Vectors (refuses until stub is filled)")
+                    help="also build the search index (steps 7-8) and run the gold smoke test")
+    ap.add_argument("--index-dir", default=None,
+                    help="where to write the index (default: <workdir>/index)")
+    ap.add_argument("--gold", default=str(HERE / "gold_expected.json"))
+    ap.add_argument("--no-dense", action="store_true",
+                    help="keyword-only index, for testing without the embedding model")
     ap.add_argument("--skip-gates", action="store_true",
                     help="reproduce a known-good build only; never on a new edition")
     args = ap.parse_args()
@@ -234,11 +232,14 @@ def main():
         print(f"  {f.name}: {n} chunks")
     print(f"  total: {total} chunks in {chunks}/")
 
-    embed_stub(chunks, args.embed)
-
-    print("\nDone. Frozen corpus is in", chunks)
-    if gates_on:
-        print("Both gates passed. Safe to commit the chunks and (when AWS exists) embed.")
+    if args.embed:
+        print("\n=== embed + index (steps 7-8) ===")
+        index_dir = pathlib.Path(args.index_dir) if args.index_dir else work / "index"
+        build_and_check_index(chunks, index_dir, args.gold, gates_on, args.no_dense)
+        print("\nDone. Chunks in", chunks, "| search index in", index_dir)
+    else:
+        print("\n  embed: skipped (add --embed to build the search index).")
+        print("\nDone. Frozen corpus is in", chunks)
 
 
 if __name__ == "__main__":

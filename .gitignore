@@ -10,3 +10,12 @@ clean/
 # Transient upload staging file (app.py writes this, then renames it away)
 .upload_*.tmp.pdf
 .new_handbook.tmp.pdf
+
+# Working search index -- rebuilt from chunks/ by build_index.py, used for
+# experiments. The TESTED index that the chatbot serves is committed to the
+# chatbot repo as index_v1/, index_v2/, ... (see INDEX_README.md).
+index/
+index_*/
+
+# Secrets (GLM API key etc.) -- never commit
+.env

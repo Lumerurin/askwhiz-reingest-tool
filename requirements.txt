@@ -1,4 +1,3 @@
-pdfplumber
-fastapi
-uvicorn
-python-multipart
+pdfplumber>=0.11
+fastembed>=0.4
+numpy>=1.26

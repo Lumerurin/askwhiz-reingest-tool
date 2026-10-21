@@ -1,0 +1,22 @@
+[
+  {"q": "What is MMCM's mission?", "audience": "college", "expect": ["handbook_college_s0000"]},
+  {"q": "What is the school motto?", "audience": "college", "expect": ["handbook_college_s0000"]},
+  {"q": "What GWA do I need for Summa Cum Laude?", "audience": "college", "expect": ["handbook_college_authored_latin_honors_gwa"]},
+  {"q": "What GWA puts a student on academic probation?", "audience": "college", "expect": ["handbook_college_authored_academic_status_gwa", "handbook_college_s0023"]},
+  {"q": "What does a grade of 1.00 mean?", "audience": "college", "expect": ["handbook_college_authored_grading_scale"]},
+  {"q": "What does INC mean on my grades?", "audience": "college", "expect": ["handbook_college_authored_grading_scale"]},
+  {"q": "What are the requirements for the Dean's List?", "audience": "college", "expect": ["handbook_college_s0020", "handbook_college_s0050"]},
+  {"q": "Is there a discount for siblings enrolled at the same time?", "audience": "college", "expect": ["handbook_college_s0049"]},
+  {"q": "Is there an early bird discount for tuition?", "audience": "college", "expect": ["handbook_college_s0046"]},
+  {"q": "When are tuition fees payable?", "audience": "college", "expect": ["handbook_college_s0040"]},
+  {"q": "What is the standard attire on campus?", "audience": "college", "expect": ["handbook_college_s0072"]},
+  {"q": "What are my responsibilities on official school social media?", "audience": "college", "expect": ["handbook_college_s0078"]},
+  {"q": "How is student discipline administered?", "audience": "college", "expect": ["handbook_college_s0071", "handbook_college_s0068", "handbook_college_s0069", "handbook_college_s0082"]},
+  {"q": "What is the Jose Rizal Scholarship?", "audience": "college", "expect": ["handbook_college_s0053"]},
+  {"q": "What happens if I fail a course three times?", "audience": "college", "expect": ["handbook_college_authored_academic_status_gwa"]},
+  {"q": "What student services does MCM offer?", "audience": "shs", "expect": ["handbook_shs_s0004", "handbook_shs_s0003", "handbook_shs_s0005", "handbook_shs_s0006"]},
+  {"q": "What grade is considered passing in senior high school?", "audience": "shs", "expect": ["handbook_shs_authored_grade_transmutation"]},
+  {"q": "What descriptor is a transmuted grade of 90 to 100?", "audience": "shs", "expect": ["handbook_shs_authored_grade_transmutation"]},
+  {"q": "What are the rules and regulations for SHS students?", "audience": "shs", "expect": ["handbook_shs_s0010", "handbook_shs_s0009"]},
+  {"q": "What is MCM's history?", "audience": "college", "expect": ["handbook_college_s0002"]}
+]

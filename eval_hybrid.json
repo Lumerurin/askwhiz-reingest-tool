@@ -1,0 +1,261 @@
+{
+  "mode": "hybrid",
+  "manifest": {
+    "built_at": "2026-10-21T17:37:06",
+    "model": "BAAI/bge-small-en-v1.5",
+    "dims": 384,
+    "chunk_count": 132,
+    "passage_count": 354,
+    "audiences": {
+      "college": 93,
+      "shs": 39
+    },
+    "corpus_sha256": "4c0e02ea65acb416ac219e0cb1f81793c2ba2fce1641df770f3d8f28a149e1de",
+    "source_files": [
+      "chunks\\handbook_college.chunks.jsonl",
+      "chunks\\handbook_shs.chunks.jsonl"
+    ]
+  },
+  "results": [
+    {
+      "q": "What is MMCM's mission?",
+      "rank": 5,
+      "top": [
+        "handbook_college_s0056",
+        "handbook_college_s0039",
+        "handbook_college_s0058",
+        "handbook_college_s0041",
+        "handbook_college_s0000"
+      ],
+      "top_match": "[College Student Handbook > I. STUDY AID > CENTER FOR SERVICE-LEARNING AND COMMUNITY ENGAGEMENT (CSCE)]"
+    },
+    {
+      "q": "What is the school motto?",
+      "rank": 1,
+      "top": [
+        "handbook_college_s0000",
+        "handbook_college_s0006",
+        "handbook_college_s0078",
+        "handbook_college_s0089",
+        "handbook_college_s0083"
+      ],
+      "top_match": "[College Student Handbook > MISSION > SCHOOL MOTTO]"
+    },
+    {
+      "q": "What GWA do I need for Summa Cum Laude?",
+      "rank": 1,
+      "top": [
+        "handbook_college_authored_latin_honors_gwa",
+        "handbook_college_s0037",
+        "handbook_college_s0023",
+        "handbook_college_authored_academic_status_gwa",
+        "handbook_college_s0026"
+      ],
+      "top_match": "[College Student Handbook > MCM Grading System > Latin Honors]"
+    },
+    {
+      "q": "What GWA puts a student on academic probation?",
+      "rank": 1,
+      "top": [
+        "handbook_college_authored_academic_status_gwa",
+        "handbook_college_s0023",
+        "handbook_college_s0039",
+        "handbook_college_s0070",
+        "handbook_college_s0024"
+      ],
+      "top_match": "[College Student Handbook > MCM Grading System > Academic Status by GWA]"
+    },
+    {
+      "q": "What does a grade of 1.00 mean?",
+      "rank": 1,
+      "top": [
+        "handbook_college_authored_grading_scale",
+        "handbook_college_s0020",
+        "handbook_college_s0037",
+        "handbook_college_authored_latin_honors_gwa",
+        "handbook_college_s0017"
+      ],
+      "top_match": "[College Student Handbook > MCM Grading System > Grading Scale]"
+    },
+    {
+      "q": "What does INC mean on my grades?",
+      "rank": 1,
+      "top": [
+        "handbook_college_authored_grading_scale",
+        "handbook_college_s0020",
+        "handbook_college_s0014",
+        "handbook_college_s0037",
+        "handbook_college_s0024"
+      ],
+      "top_match": "[College Student Handbook > MCM Grading System > Grading Scale]"
+    },
+    {
+      "q": "What are the requirements for the Dean's List?",
+      "rank": 2,
+      "top": [
+        "handbook_college_s0025",
+        "handbook_college_s0050",
+        "handbook_college_s0026",
+        "handbook_college_s0030",
+        "handbook_college_s0009"
+      ],
+      "top_match": "[College Student Handbook > MCM GRADING SYSTEM > THE DEAN'S LISTS (FOR BACCALAUREATE PROGRAMS)]"
+    },
+    {
+      "q": "Is there a discount for siblings enrolled at the same time?",
+      "rank": 1,
+      "top": [
+        "handbook_college_s0049",
+        "handbook_college_s0046",
+        "handbook_college_s0047",
+        "handbook_college_s0051",
+        "handbook_college_s0052"
+      ],
+      "top_match": "[College Student Handbook > F. SIBLING DISCOUNT]"
+    },
+    {
+      "q": "Is there an early bird discount for tuition?",
+      "rank": 1,
+      "top": [
+        "handbook_college_s0046",
+        "handbook_college_s0049",
+        "handbook_college_s0047",
+        "handbook_college_s0052",
+        "handbook_college_s0051"
+      ],
+      "top_match": "[College Student Handbook > C. EARLY BIRD DISCOUNT]"
+    },
+    {
+      "q": "When are tuition fees payable?",
+      "rank": 1,
+      "top": [
+        "handbook_college_s0040",
+        "handbook_college_s0051",
+        "handbook_college_s0028",
+        "handbook_college_s0052",
+        "handbook_college_s0015"
+      ],
+      "top_match": "[College Student Handbook > TUITION FEES & OTHER CHARGES > GENERAL INFORMATION]"
+    },
+    {
+      "q": "What is the standard attire on campus?",
+      "rank": 2,
+      "top": [
+        "handbook_college_s0074",
+        "handbook_college_s0072",
+        "handbook_college_s0075",
+        "handbook_college_s0042",
+        "handbook_college_s0073"
+      ],
+      "top_match": "[College Student Handbook > STANDARD ATTIRE ON CAMPUS > QUALIFICATIONS]"
+    },
+    {
+      "q": "What are my responsibilities on official school social media?",
+      "rank": 2,
+      "top": [
+        "handbook_college_s0079",
+        "handbook_college_s0078",
+        "handbook_college_s0080",
+        "handbook_college_s0077",
+        "handbook_college_s0081"
+      ],
+      "top_match": "[College Student Handbook > II. RESPONSIBILITIES OF STUDENTS IN OFFICIAL SCHOOL ONLINE/SOCIAL MEDIA PRESENCE > III. RESPONSIBILITIES OF STUDENTS IN PERSONAL ONLINE/SOCIAL MEDIA PRESENCE]"
+    },
+    {
+      "q": "How is student discipline administered?",
+      "rank": 2,
+      "top": [
+        "handbook_college_s0042",
+        "handbook_college_s0071",
+        "handbook_college_s0065",
+        "handbook_college_s0070",
+        "handbook_college_s0069"
+      ],
+      "top_match": "[College Student Handbook > STUDENT SERVICES > CENTER FOR STUDENTS ACTIVITIES AND DISCIPLINE (CSAD)]"
+    },
+    {
+      "q": "What is the Jose Rizal Scholarship?",
+      "rank": 1,
+      "top": [
+        "handbook_college_s0053",
+        "handbook_college_s0039",
+        "handbook_college_s0044",
+        "handbook_college_s0043",
+        "handbook_college_s0045"
+      ],
+      "top_match": "[College Student Handbook > H. JOSE RIZAL SCHOLARSHIP]"
+    },
+    {
+      "q": "What happens if I fail a course three times?",
+      "rank": null,
+      "top": [
+        "handbook_college_s0017",
+        "handbook_college_s0020",
+        "handbook_college_s0015",
+        "handbook_college_s0014",
+        "handbook_college_s0016"
+      ],
+      "top_match": "[College Student Handbook > THE ACADEMIC DEPARTMENTS / COLLEGES > OFFICIAL DROPPING OF COURSES]"
+    },
+    {
+      "q": "What student services does MCM offer?",
+      "rank": 1,
+      "top": [
+        "handbook_shs_s0006",
+        "handbook_shs_s0007",
+        "handbook_shs_s0008",
+        "handbook_shs_s0004",
+        "handbook_shs_s0002"
+      ],
+      "top_match": "[Senior High School Student Handbook > Student Services > CENTER FOR HEALTH SERVICES AND WELLNESS (CHSW)]"
+    },
+    {
+      "q": "What grade is considered passing in senior high school?",
+      "rank": 2,
+      "top": [
+        "handbook_shs_s0031",
+        "handbook_shs_authored_grade_transmutation",
+        "handbook_shs_s0010",
+        "handbook_shs_s0002",
+        "handbook_shs_s0015"
+      ],
+      "top_match": "[Senior High School Student Handbook > Student Rules and Regulations > Grading System and Identification of Academic Honors]"
+    },
+    {
+      "q": "What descriptor is a transmuted grade of 90 to 100?",
+      "rank": 1,
+      "top": [
+        "handbook_shs_authored_grade_transmutation",
+        "handbook_shs_s0031",
+        "handbook_shs_s0019",
+        "handbook_shs_authored_page_21",
+        "handbook_shs_s0008"
+      ],
+      "top_match": "[Senior High School Student Handbook > Grading System > Grade Transmutation]"
+    },
+    {
+      "q": "What are the rules and regulations for SHS students?",
+      "rank": 2,
+      "top": [
+        "handbook_shs_s0007",
+        "handbook_shs_s0009",
+        "handbook_shs_s0012",
+        "handbook_shs_s0008",
+        "handbook_shs_s0031"
+      ],
+      "top_match": "[Senior High School Student Handbook > Student Services > SECURITY SERVICES]"
+    },
+    {
+      "q": "What is MCM's history?",
+      "rank": null,
+      "top": [
+        "handbook_college_s0060",
+        "handbook_college_s0062",
+        "handbook_college_s0058",
+        "handbook_college_s0001",
+        "handbook_college_s0061"
+      ],
+      "top_match": "[College Student Handbook > THE ADMINISTRATIVE OFFICE > MCM CENTER FOR LEARNING AND INFORMATION RESOURCES (CLIR)]"
+    }
+  ]
+}
