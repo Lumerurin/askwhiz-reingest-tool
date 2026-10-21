@@ -127,9 +127,11 @@ Ported from the original CLI pipeline (`ingest.py`) and extended in the app:
 | 1 — drift | PDF page count vs. what `pipeline_config.json` expects | a new edition doesn't match the config it was tuned against |
 | 2 — authored tables | Required hand-transcribed tables are present *and verified* | a required correction is missing or unverified |
 | 3 — review queue | Every flagged or manually-corrected page is resolved | a page is still `pending`, `unverified`, or a saved correction hasn't been re-processed (`needs_rerun`) |
+| 4 — gold questions | A newly built search index finds the right section for the 20 questions in `gold_expected.json` | fewer than 18 of 20 are in the top 5, or "What is the school motto?" isn't answered first |
 
-All three are re-checked live from the actual frozen corpus, not from in-progress edits — so the app
-can't report a clean pass while a saved-but-not-yet-applied correction sits stale.
+Gates 1–3 are re-checked live from the actual frozen corpus, not from in-progress edits — so the app
+can't report a clean pass while a saved-but-not-yet-applied correction sits stale. Gate 4 runs on the
+Search Index tab (or `ingest.py --embed`) every time an index is built.
 
 ## Project layout
 
@@ -137,9 +139,14 @@ can't report a clean pass while a saved-but-not-yet-applied correction sits stal
 extract.py              PDF -> per-page text + font/position spans (pdfplumber)
 chunker.py               spans -> headed sections -> chunks.jsonl, merges in corrections
 normalize.py             historical migration script; not part of the live pipeline output
-ingest.py                CLI orchestrator: extract -> normalize -> chunk, gates 1 & 2
+ingest.py                CLI orchestrator: extract -> normalize -> chunk, gates 1 & 2 (+ index, gate 4 with --embed)
+passages.py              splits a chunk into small labelled search passages
+build_index.py           chunks -> search index folder (passages + vectors), local model, no cloud
+retrieve.py              hybrid keyword + meaning search, used by the chatbot and the tests
+eval_gold.py             scores an index on gold_expected.json (gate 4 uses this)
 verify_extraction.py     standalone pre-flight PDF sanity checker (CLI)
-app.py                   FastAPI web app: runs the pipeline, gate 3, the review/correction UI
+app.py                   FastAPI web app: runs the pipeline, gate 3, the review/correction UI,
+                         and the Search Index tab (build + gate 4)
 static/                  frontend (vanilla HTML/CSS/JS, no build step)
 
 pipeline_config.json     per-handbook settings, editable from the app's Settings tab
@@ -149,11 +156,17 @@ review_state.json        pages a human has explicitly dismissed as "fine as-is"
 uploads/                 source PDFs for handbooks added through the app
 chunks/                  the frozen, committed corpus -- one .jsonl per handbook
 raw/, clean/             intermediate extraction output, regenerated on each run (not committed)
+index/, index_v*/        search index builds, made on the Search Index tab (not committed here; a
+                         passing version is copied into the chatbot repo)
 ```
 
 ## Status / what's next
 
-The corpus is built and frozen here; this repo does not embed it or serve a chatbot. The documented
-next step (see `embed_stub()` in `ingest.py`) is: embed each chunk (Titan Embed Text v2 via AWS
-Bedrock), store the vectors in an index (AWS S3 Vectors, with `audience` as a filterable field), and
-build the retrieval + generation layer on top — none of which is implemented yet.
+The corpus is built and frozen here, and the **Search Index** tab turns it into the index the chatbot
+reads (steps 7–8). AWS was dropped in October 2026: the index is a folder of files built with a small
+local embedding model (bge-small-en-v1.5), with no cloud service and no per-use cost. See
+`INDEX_README.md` for how search works and the baseline scores.
+
+Building an index never changes the chatbot. To use a new one: build it on the Search Index tab, check
+it passed Gate 4, download it, put it in the chatbot repo, and point the chatbot's index setting at it.
+Next to build: the answering engine (GLM via the Z.ai API) and the chat widget, hosted on Render.

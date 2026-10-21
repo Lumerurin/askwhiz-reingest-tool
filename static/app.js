@@ -71,6 +71,7 @@ function switchTab(name) {
   if (name === "tables") loadAuthoredTables();
   if (name === "chunks") initChunksTab();
   if (name === "pages") initPagesTab();
+  if (name === "index") loadIndexTab();
 }
 
 /** The one entry point for "go work on this specific handbook" -- used after
@@ -1285,6 +1286,249 @@ async function saveCorrection() {
   } finally {
     setBtnBusy(saveBtn, false);
   }
+}
+
+// ==================================================== SEARCH INDEX tab ====
+// Steps 7-8 (embed + index) and Gate 4 (gold questions) behind one button.
+// Building never touches the chatbot: a passing version still has to be
+// copied into the chatbot project by a person.
+
+let indexOverview = null;
+let indexPollTimer = null;
+const indexOpenDetails = new Set();
+
+$("#index-build-btn").addEventListener("click", startIndexBuild);
+
+async function loadIndexTab() {
+  if (!indexOverview) {
+    $("#index-handbooks").innerHTML = loadingBlock("Loading handbooks...");
+    $("#index-versions").innerHTML = loadingBlock("Loading index versions...");
+  }
+  try {
+    indexOverview = await fetchJSON("/api/index");
+  } catch (e) {
+    indexOverview = null;
+    $("#index-handbooks").innerHTML = `<div class="gate-line bad">Couldn't load the search index page (${esc(e.message)}).
+      If you just updated the app, the old version is probably still running: stop it with Ctrl+C in its
+      terminal, run "python app.py" again, then refresh this page.</div>`;
+    $("#index-versions").innerHTML = "";
+    $("#index-build-btn").disabled = true;
+    return;
+  }
+  renderIndexHandbooks();
+  renderIndexVersions();
+  renderIndexJob(indexOverview.job);
+  if (indexOverview.job.state === "running") pollIndexJob();
+}
+
+function selectedIndexDocs() {
+  return $$("#index-handbooks input[type=checkbox]:checked").map((c) => c.value);
+}
+
+function renderIndexHandbooks() {
+  const o = indexOverview;
+  const wrap = $("#index-handbooks");
+  const previous = new Set(selectedIndexDocs());
+  const keepPrevious = previous.size > 0;
+  wrap.innerHTML = "";
+  for (const h of o.handbooks) {
+    const row = document.createElement("label");
+    row.className = "index-handbook" + (h.indexable ? "" : " disabled");
+    const checked = h.indexable && (keepPrevious ? previous.has(h.id) : true);
+    row.innerHTML = `
+      <input type="checkbox" value="${esc(h.id)}" ${checked ? "checked" : ""} ${h.indexable ? "" : "disabled"}>
+      <div>
+        <div><strong>${esc(h.source)}</strong></div>
+        <div class="meta">${h.indexable
+          ? `Audience: ${esc(h.audience)} · ${h.chunk_count} sections · ${o.gold_by_audience[h.audience] || 0} gold questions`
+          : `Can't be included: ${esc(h.reason)}.`}</div>
+      </div>`;
+    row.querySelector("input").addEventListener("change", updateIndexWarnings);
+    wrap.appendChild(row);
+  }
+  const warn = document.createElement("div");
+  warn.id = "index-warnings";
+  wrap.appendChild(warn);
+  $("#index-build-status").textContent = `Will be saved as ${o.next_name}`;
+  $("#index-build-status").className = "status-msg";
+  updateIndexWarnings();
+}
+
+function updateIndexWarnings() {
+  const o = indexOverview;
+  const chosen = o.handbooks.filter((h) => selectedIndexDocs().includes(h.id));
+  const warnings = [];
+  const byAudience = {};
+  for (const h of chosen) (byAudience[h.audience] ||= []).push(h.source);
+  for (const [aud, names] of Object.entries(byAudience)) {
+    if (names.length > 1) {
+      warnings.push(`${names.join(" and ")} have the same audience (${aud}). ` +
+        `If one is a newer edition of the other, include only the newer one, or the chatbot will see both and may quote the old rules.`);
+    }
+  }
+  for (const [aud, n] of Object.entries(o.gold_by_audience)) {
+    if (!byAudience[aud]) {
+      warnings.push(`No handbook for audience "${aud}" is selected, so its ${n} gold question${n > 1 ? "s" : ""} will find nothing and Gate 4 will likely fail.`);
+    }
+  }
+  for (const aud of Object.keys(byAudience)) {
+    if (!o.gold_by_audience[aud]) {
+      warnings.push(`There are no gold questions for audience "${aud}", so Gate 4 can't tell whether search works for it. Add some to gold_expected.json.`);
+    }
+  }
+  $("#index-warnings").innerHTML = warnings.map((w) => `<div class="index-warn">${esc(w)}</div>`).join("");
+  $("#index-build-btn").disabled = chosen.length === 0 || (o.job && o.job.state === "running");
+}
+
+async function startIndexBuild() {
+  const docs = selectedIndexDocs();
+  if (!docs.length) {
+    $("#index-build-status").textContent = indexOverview
+      ? "Tick at least one handbook first."
+      : "The handbook list didn't load -- see the message above.";
+    $("#index-build-status").className = "status-msg bad";
+    return;
+  }
+  const btn = $("#index-build-btn");
+  setBtnBusy(btn, true, "Starting...");
+  try {
+    await fetchJSON("/api/index/build", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ docs }),
+    });
+    pollIndexJob();
+  } catch (e) {
+    setBtnBusy(btn, false);
+    $("#index-build-status").textContent = "Couldn't start: " + e.message;
+    $("#index-build-status").className = "status-msg bad";
+  }
+}
+
+function pollIndexJob() {
+  clearTimeout(indexPollTimer);
+  const btn = $("#index-build-btn");
+  setBtnBusy(btn, true, "Building...");
+  const tick = async () => {
+    let job;
+    try { job = await fetchJSON("/api/index/job"); } catch { indexPollTimer = setTimeout(tick, 3000); return; }
+    renderIndexJob(job);
+    if (job.state === "running") {
+      indexPollTimer = setTimeout(tick, 1500);
+    } else {
+      setBtnBusy(btn, false);
+      if (job.state === "done") indexOpenDetails.add(job.name);
+      await loadIndexTab();
+    }
+  };
+  tick();
+}
+
+function renderIndexJob(job) {
+  const wrap = $("#index-job");
+  if (!job || job.state === "idle") { wrap.innerHTML = ""; return; }
+  let head;
+  if (job.state === "running") {
+    head = `<div class="loading-block"><span class="spinner"></span>${esc(job.name)}: ${esc(job.step || "Working")}... ` +
+      `The first build downloads the search model (about 130 MB), so it can take a few minutes.</div>`;
+  } else if (job.state === "failed") {
+    head = `<div class="gate-line bad">Build of ${esc(job.name)} failed: ${esc(job.error)}</div>`;
+  } else {
+    const r = job.result;
+    head = r.gate4.ok
+      ? `<div class="gate-line ok">${esc(job.name)} is built and passed Gate 4. Details are in the table below.</div>`
+      : `<div class="gate-line bad">${esc(job.name)} is built but FAILED Gate 4: ${esc(r.gate4.problems.join("; "))}. Don't use this one.</div>`;
+  }
+  const log = job.log
+    ? `<details class="stage-log${job.state === "failed" ? " fail" : ""}" ${job.state !== "done" ? "open" : ""}>
+         <summary>Technical log</summary><pre style="margin:0; white-space:pre-wrap;">${esc(job.log)}</pre></details>`
+    : "";
+  wrap.innerHTML = head + log;
+  const pre = wrap.querySelector("pre");
+  if (pre && job.state === "running") pre.parentElement.scrollTop = pre.parentElement.scrollHeight;
+}
+
+function rankPill(rank) {
+  if (rank === 1) return `<span class="rank-pill rank-1">1st</span>`;
+  if (rank == null) return `<span class="rank-pill rank-miss">missed</span>`;
+  return `<span class="rank-pill rank-mid">#${rank}</span>`;
+}
+
+function renderIndexVersions() {
+  const versions = indexOverview.versions;
+  const wrap = $("#index-versions");
+  if (!versions.length) {
+    wrap.innerHTML = `<p class="hint">No index built yet.</p>`;
+    return;
+  }
+  const rows = versions.map((v, i) => {
+    const older = versions.slice(i + 1).find((x) => x.summary);
+    let delta = "";
+    if (v.summary && older) {
+      const d = v.summary.mrr - older.summary.mrr;
+      if (Math.abs(d) >= 0.0005) delta = ` <span class="${d > 0 ? "delta-up" : "delta-down"}">${d > 0 ? "+" : ""}${d.toFixed(3)}</span>`;
+    }
+    const s = v.summary;
+    const n = s ? s.n : 0;
+    const gate = v.gate4 == null ? `<span class="badge warn">not tested</span>`
+      : v.gate4.ok ? `<span class="badge ok">passed</span>` : `<span class="badge bad">failed</span>`;
+    const built = v.built_at ? v.built_at.replace("T", " ").slice(0, 16) : "";
+    return `
+      <tr data-name="${esc(v.name)}">
+        <td><strong>${esc(v.name)}</strong></td>
+        <td style="white-space:nowrap;">${esc(built)}</td>
+        <td>${v.handbooks.map(esc).join("<br>")}</td>
+        <td class="num">${v.passage_count ?? ""}</td>
+        <td class="num">${s ? `${s["hit@1"]}/${n}` : "–"}</td>
+        <td class="num">${s ? `${s["hit@3"]}/${n}` : "–"}</td>
+        <td class="num">${s ? `${s["hit@5"]}/${n}` : "–"}</td>
+        <td class="num">${s ? s.mrr.toFixed(3) : "–"}${delta}</td>
+        <td>${gate}</td>
+        <td style="white-space:nowrap;">
+          <button type="button" class="small-btn details-btn">${indexOpenDetails.has(v.name) ? "Hide" : "Details"}</button>
+          <a class="link-btn small-btn" href="/api/index/${encodeURIComponent(v.name)}/download">Download</a>
+        </td>
+      </tr>
+      ${indexOpenDetails.has(v.name) ? `<tr class="detail-row"><td colspan="10">${indexDetails(v)}</td></tr>` : ""}`;
+  }).join("");
+  wrap.innerHTML = `
+    <div class="index-table-wrap"><table class="index-table">
+      <thead><tr><th>Version</th><th>Built</th><th>Handbooks</th><th class="num">Passages</th>
+        <th class="num">1st</th><th class="num">Top 3</th><th class="num">Top 5</th><th class="num">MRR</th>
+        <th>Gate 4</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+  $$(".details-btn", wrap).forEach((b) => b.addEventListener("click", () => {
+    const name = b.closest("tr").dataset.name;
+    indexOpenDetails.has(name) ? indexOpenDetails.delete(name) : indexOpenDetails.add(name);
+    renderIndexVersions();
+  }));
+}
+
+function indexDetails(v) {
+  const rule = indexOverview.gate4_rule;
+  let html = "";
+  if (v.gate4 && !v.gate4.ok) {
+    html += `<div class="gate-line bad">Gate 4 failed: ${esc(v.gate4.problems.join("; "))}. Don't use this version.</div>`;
+  } else if (v.gate4 && v.gate4.ok) {
+    html += `<div class="gate-line ok">Passed Gate 4: at least ${rule.min_hit5} gold questions in the top 5, and
+      "${esc(rule.must_be_first.join('", "'))}" answered first.</div>
+      <ol class="publish-steps">
+        <li>Download this version (or copy the <code>${esc(v.name)}</code> folder).</li>
+        <li>Put it in the chatbot project and change the chatbot's index setting to <code>${esc(v.name)}</code>.</li>
+        <li>Commit and push. Render redeploys, and keeps the old version running if the deploy fails.</li>
+      </ol>`;
+  }
+  if (v.results) {
+    html += `<table class="index-table" style="margin-top:0.6rem;">
+      <thead><tr><th>Gold question</th><th>Right answer</th><th>Best-matching passage</th></tr></thead><tbody>` +
+      v.results.map((r) => `<tr><td>${esc(r.q)}${r.audience ? ` <span class="badge warn">${esc(r.audience)}</span>` : ""}</td><td>${rankPill(r.rank)}</td>
+        <td class="hint" style="margin:0;">${esc(r.top_match || "")}</td></tr>`).join("") +
+      `</tbody></table>`;
+  } else {
+    html += `<p class="hint">This version has no gold results saved.</p>`;
+  }
+  return html;
 }
 
 // ============================================================ init ====

@@ -15,6 +15,7 @@
     <button data-tab="run" class="tab active">Handbooks</button>
     <button data-tab="review" class="tab">Review</button>
     <button data-tab="pages" class="tab">Page Explorer</button>
+    <button data-tab="index" class="tab">Search Index</button>
     <span class="nav-divider">Advanced</span>
     <button data-tab="config" class="tab">Settings</button>
     <button data-tab="tables" class="tab">Manual Corrections</button>
@@ -105,6 +106,30 @@
         <span id="chunks-count" class="status-msg"></span>
       </div>
       <div id="chunks-list"></div>
+    </div>
+  </section>
+
+  <!-- ========================== SEARCH INDEX ========================== -->
+  <section id="tab-index" class="tab-panel">
+    <div class="panel">
+      <h2>Build a search index</h2>
+      <p class="hint">Turns the processed handbooks into the search index the chatbot reads from, then asks it the
+        gold questions to check it still finds the right answers (Gate 4). Each build goes into a new numbered
+        folder, so earlier versions stay untouched. <strong>Building does not change the chatbot.</strong> The
+        chatbot only uses an index after someone copies a passing version into the chatbot project.</p>
+      <div id="index-handbooks"></div>
+      <div class="row">
+        <button id="index-build-btn" class="primary">Build search index</button>
+        <span id="index-build-status" class="status-msg"></span>
+      </div>
+      <div id="index-job"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Index versions</h2>
+      <p class="hint">Newest first. Scores are from the gold questions: how often the right handbook section came
+        back first, in the top 3, and in the top 5. Average rank score (MRR) is 1.0 when every answer is first.</p>
+      <div id="index-versions"></div>
     </div>
   </section>
 

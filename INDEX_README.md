@@ -14,6 +14,9 @@ python eval_gold.py --index index
 
 The first run downloads the embedding model (about 130 MB) once.
 
+Or use the **Search Index** tab in the app (`python app.py`): tick the handbooks, press
+**Build search index**, and it saves a new `index_vN` folder with its Gate 4 result.
+
 Or the whole pipeline in one command, ending with the gold-question gate:
 
 ```powershell
@@ -30,7 +33,7 @@ python ingest.py --pdf-college MCM-HANDBOOK-2020-COLLEGE.pdf --pdf-shs MCM-HANDB
 | Only 10 candidates per method | 50 candidates per method |
 | `"absences."` did not match `"absences"`; a trailing `?` matched nothing | New keyword tokenizer: strips punctuation, folds accents, keeps `1.25` and `137-a` |
 | Embeddings file re-read on every question | Index loaded once at startup |
-| No check that search works before going live | Gate 3 in `ingest.py`: 18 of 20 gold questions in the top 5, and the motto question must rank first |
+| No check that search works before going live | Gate 4 (in `ingest.py` and the app's Search Index tab): 18 of 20 gold questions in the top 5, and the motto question must rank first |
 
 ## Files
 
@@ -58,3 +61,13 @@ numbers here. That run is the baseline every later change is measured against.
 - Build into a new folder (`index_v2`), test it, then point the app at it.
 - The model that built the index must be the model that embeds questions;
   `retrieve.py` reads it from `manifest.json`.
+
+## Where the knowledge base lives
+
+| Part | Where | Why |
+|---|---|---|
+| Chunks (`chunks/*.jsonl`) | this repo | the source of truth; git shows what changed between editions |
+| Released index (`index_v1/`, `index_v2/`, ...) | the chatbot repo | the chatbot serves exactly the version that passed Gate 4; rolling back = pointing at the previous folder |
+| Embedding model (~130 MB) | downloaded during Render's build | needed at answer time, identical every build, too big for git |
+| Query logs | a database (to be chosen) | Render's disk is wiped on every deploy |
+| GLM API key | Render environment variables / local `.env` | never in git |

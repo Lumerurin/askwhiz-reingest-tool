@@ -603,6 +603,217 @@ def run_pipeline(req: RunRequest):
     return result
 
 
+# ---------------------------------------------------------- search index ---
+# Steps 7-8 (embed + index) and GATE 4 (gold questions) behind a button.
+# The heavy lifting stays in build_index.py and eval_gold.py, run as separate
+# processes exactly as on the command line; this only picks the chunk files,
+# names the folder, and records the result. It never publishes anything: the
+# chatbot uses an index only after a person copies it into the chatbot repo.
+
+GOLD_PATH = HERE / "gold_expected.json"
+INDEX_NAME_RE = re.compile(r"^index(_v\d+)?$")
+
+_INDEX_JOB_LOCK = threading.Lock()
+_INDEX_JOB: dict = {"state": "idle"}
+
+
+def index_versions() -> list:
+    """Every index folder here (index, index_v1, index_v2, ...), newest first,
+    with what it was built from and how it scored."""
+    names = {f"{d['doc_id']}.chunks.jsonl": d["source"] for d in read_config()["docs"].values()}
+    out = []
+    for d in HERE.iterdir():
+        if not (d.is_dir() and INDEX_NAME_RE.match(d.name) and (d / "manifest.json").exists()):
+            continue
+        try:
+            manifest = json.loads((d / "manifest.json").read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        info = {}
+        if (d / "build_info.json").exists():
+            info = json.loads((d / "build_info.json").read_text(encoding="utf-8"))
+        gold = None
+        for name in ("gold.json", "eval_hybrid.json"):
+            if (d / name).exists():
+                gold = json.loads((d / name).read_text(encoding="utf-8"))
+                break
+        if gold is None and d.name == "index":
+            # the first baseline was scored from the project folder
+            f = HERE / "eval_rewrite.json"
+            if f.exists():
+                gold = json.loads(f.read_text(encoding="utf-8"))
+        gate = info.get("gate4")
+        if gate is None and gold is not None:
+            problems = ingest.gold_gate_problems(gold["results"])
+            gate = {"ok": not problems, "problems": problems}
+        num = int(d.name.split("_v")[1]) if "_v" in d.name else 0
+        out.append({
+            "name": d.name,
+            "num": num,
+            "built_at": manifest.get("built_at"),
+            "model": manifest.get("model"),
+            "chunk_count": manifest.get("chunk_count"),
+            "passage_count": manifest.get("passage_count"),
+            "handbooks": [h["source"] for h in info.get("handbooks", [])]
+                         or [names.get(pathlib.PureWindowsPath(f).name, pathlib.PureWindowsPath(f).name)
+                             for f in manifest.get("source_files", [])],
+            "summary": gold["summary"] if gold else None,
+            "results": gold["results"] if gold else None,
+            "gate4": gate,
+        })
+    out.sort(key=lambda v: (v["num"], v["built_at"] or ""), reverse=True)
+    return out
+
+
+def next_index_name() -> str:
+    nums = [int(d.name.split("_v")[1]) for d in HERE.iterdir()
+            if d.is_dir() and re.match(r"^(\.building_)?index_v\d+$", d.name)]
+    return f"index_v{max(nums, default=0) + 1}"
+
+
+def _job_log(line: str) -> None:
+    with _INDEX_JOB_LOCK:
+        _INDEX_JOB["log"] = (_INDEX_JOB.get("log", "") + line)[-20000:]
+
+
+def _stream(cmd: list) -> int:
+    """Run a script, copying its output into the job log as it arrives (the
+    first build downloads the ~130 MB model, so progress matters)."""
+    _job_log("$ " + " ".join(str(c) for c in cmd[1:]) + "\n")
+    p = subprocess.Popen([str(c) for c in cmd], cwd=HERE, stdout=subprocess.PIPE,
+                         stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace")
+    for line in p.stdout:
+        _job_log(line)
+    return p.wait()
+
+
+def _build_index_job(name: str, handbooks: list) -> None:
+    tmp, final = HERE / f".building_{name}", HERE / name
+    try:
+        if tmp.exists():
+            shutil.rmtree(tmp)
+        files = [h["chunk_file"] for h in handbooks]
+        with _INDEX_JOB_LOCK:
+            _INDEX_JOB["step"] = "Building passages and vectors"
+        if _stream([sys.executable, HERE / "build_index.py", "--chunks", *files, "--out", tmp]) != 0:
+            raise RuntimeError("build_index.py failed -- see the log below")
+
+        with _INDEX_JOB_LOCK:
+            _INDEX_JOB["step"] = "Running the gold questions (Gate 4)"
+        if _stream([sys.executable, HERE / "eval_gold.py", "--index", tmp,
+                    "--gold", GOLD_PATH, "--save", tmp / "gold.json"]) != 0:
+            raise RuntimeError("eval_gold.py failed -- see the log below")
+
+        gold = json.loads((tmp / "gold.json").read_text(encoding="utf-8"))
+        problems = ingest.gold_gate_problems(gold["results"])
+        info = {
+            "name": name,
+            "built_at": datetime.datetime.now().isoformat(timespec="seconds"),
+            "handbooks": handbooks,
+            "summary": gold["summary"],
+            "gate4": {"ok": not problems, "problems": problems},
+        }
+        (tmp / "build_info.json").write_text(json.dumps(info, indent=2, ensure_ascii=False),
+                                             encoding="utf-8")
+        tmp.rename(final)
+        with _INDEX_JOB_LOCK:
+            _INDEX_JOB.update(state="done", step=None, result=info)
+    except Exception as e:  # noqa: BLE001 -- surfaced to the UI, never swallowed
+        with _INDEX_JOB_LOCK:
+            _INDEX_JOB.update(state="failed", step=None, error=str(e))
+    finally:
+        if tmp.exists() and not final.exists():
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
+def _index_candidates() -> list:
+    cfg = read_config()
+    out = []
+    for doc, d in cfg["docs"].items():
+        n = len(load_chunks(d))
+        reason = None
+        if not n:
+            reason = "it hasn't been processed yet"
+        elif not str(d.get("audience", "")).strip():
+            reason = "it has no audience set (see Settings)"
+        out.append({"id": doc, "doc_id": d["doc_id"], "source": d["source"],
+                    "audience": d["audience"], "chunk_count": n,
+                    "chunk_file": str(chunk_file_for(d).relative_to(HERE)),
+                    "indexable": reason is None, "reason": reason})
+    return out
+
+
+@app.get("/api/index")
+def get_index_overview():
+    with _INDEX_JOB_LOCK:
+        job = dict(_INDEX_JOB)
+    gold = json.loads(GOLD_PATH.read_text(encoding="utf-8")) if GOLD_PATH.exists() else []
+    gold_by_audience: dict = {}
+    for g in gold:
+        gold_by_audience[g["audience"]] = gold_by_audience.get(g["audience"], 0) + 1
+    return {
+        "handbooks": _index_candidates(),
+        "versions": index_versions(),
+        "next_name": next_index_name(),
+        "gold_count": len(gold),
+        "gold_by_audience": gold_by_audience,
+        "gate4_rule": {"min_hit5": ingest.gold_min_hit5(len(gold)), "must_be_first": ingest.GOLD_MUST_BE_FIRST},
+        "job": job,
+    }
+
+
+@app.get("/api/index/job")
+def get_index_job():
+    with _INDEX_JOB_LOCK:
+        return dict(_INDEX_JOB)
+
+
+class IndexBuildRequest(BaseModel):
+    docs: list
+
+
+@app.post("/api/index/build")
+def start_index_build(req: IndexBuildRequest):
+    candidates = {c["id"]: c for c in _index_candidates()}
+    unknown = [d for d in req.docs if d not in candidates]
+    if unknown:
+        raise HTTPException(400, f"unknown handbook(s): {unknown}")
+    if not req.docs:
+        raise HTTPException(400, "pick at least one handbook")
+    blocked = [f"{candidates[d]['source']}: {candidates[d]['reason']}"
+               for d in req.docs if not candidates[d]["indexable"]]
+    if blocked:
+        raise HTTPException(400, "can't index " + "; ".join(blocked))
+    if not GOLD_PATH.exists():
+        raise HTTPException(400, "gold_expected.json is missing, so Gate 4 can't run")
+
+    with _INDEX_JOB_LOCK:
+        if _INDEX_JOB.get("state") == "running":
+            raise HTTPException(409, "an index is already being built")
+        name = next_index_name()
+        handbooks = [{k: candidates[d][k] for k in ("id", "source", "audience", "chunk_file", "chunk_count")}
+                     for d in req.docs]
+        _INDEX_JOB.clear()
+        _INDEX_JOB.update(state="running", name=name, step="Starting", log="",
+                          started_at=datetime.datetime.now().isoformat(timespec="seconds"))
+    threading.Thread(target=_build_index_job, args=(name, handbooks), daemon=True).start()
+    return {"name": name}
+
+
+@app.get("/api/index/{name}/download")
+def download_index(name: str):
+    if not INDEX_NAME_RE.match(name) or not (HERE / name / "manifest.json").exists():
+        raise HTTPException(404, f"no index named {name!r}")
+    import zipfile
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for f in sorted((HERE / name).rglob("*")):
+            if f.is_file():
+                z.write(f, pathlib.Path(name) / f.relative_to(HERE / name))
+    return Response(content=buf.getvalue(), media_type="application/zip",
+                    headers={"Content-Disposition": f'attachment; filename="{name}.zip"'})
+
+
 # --------------------------------------------------------------- chunks ---
 
 @app.get("/api/chunks/{doc}")

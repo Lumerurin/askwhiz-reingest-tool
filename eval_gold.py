@@ -29,7 +29,7 @@ def run(r, gold, verbose=True):
         ids = [h["chunk_id"] for h in hits]
         rank = next((i + 1 for i, c in enumerate(ids) if c in g["expect"]), None)
         rr.append(1 / rank if rank else 0)
-        rows.append({"q": g["q"], "rank": rank, "top": ids,
+        rows.append({"q": g["q"], "audience": g["audience"], "rank": rank, "top": ids,
                      "top_match": hits[0]["matched_path"] if hits else None})
         if verbose:
             mark = {1: "HIT ", None: "MISS"}.get(rank, f"#{rank}  ")

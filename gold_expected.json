@@ -18,5 +18,10 @@
   {"q": "What grade is considered passing in senior high school?", "audience": "shs", "expect": ["handbook_shs_authored_grade_transmutation"]},
   {"q": "What descriptor is a transmuted grade of 90 to 100?", "audience": "shs", "expect": ["handbook_shs_authored_grade_transmutation"]},
   {"q": "What are the rules and regulations for SHS students?", "audience": "shs", "expect": ["handbook_shs_s0010", "handbook_shs_s0009"]},
-  {"q": "What is MCM's history?", "audience": "college", "expect": ["handbook_college_s0002"]}
+  {"q": "What is MCM's history?", "audience": "college", "expect": ["handbook_college_s0002"]},
+  {"q": "What is the school motto?", "audience": "high-school-handbook", "expect": ["handbook_high_school_handbook_s0007"]},
+  {"q": "Which day can learners wear civilian clothes?", "audience": "high-school-handbook", "expect": ["handbook_high_school_handbook_s0048", "handbook_high_school_handbook_s0049", "handbook_high_school_handbook_s0050"]},
+  {"q": "What happens if a Grade 8 student fails two learning areas?", "audience": "high-school-handbook", "expect": ["handbook_high_school_handbook_authored_page_41", "handbook_high_school_handbook_s0056"]},
+  {"q": "What happens if I am late to class repeatedly?", "audience": "high-school-handbook", "expect": ["handbook_high_school_handbook_authored_page_17"]},
+  {"q": "How do I report bullying?", "audience": "high-school-handbook", "expect": ["handbook_high_school_handbook_s0046", "handbook_high_school_handbook_s0045"]}
 ]

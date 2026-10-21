@@ -10,7 +10,7 @@ labelled passages (see passages.py), embeds every passage with a small local
 model, and writes the index folder the chatbot loads at startup:
 
     index/manifest.json   model, dimensions, counts, corpus fingerprint
-    index/chunks.json     the 132 chunks (what the AI answers from + citations)
+    index/chunks.json     the chunks (what the AI answers from + citations)
     index/passages.json   the search passages
     index/vectors.npy     one normalised vector per passage
 
@@ -56,8 +56,8 @@ def load_chunks(paths):
         for key in ("chunk_id", "audience", "breadcrumb", "chunk_text", "pages", "page_labels"):
             if key not in c:
                 raise SystemExit(f"! chunk {c.get('chunk_id')} is missing '{key}'")
-        if c["audience"] not in ("college", "shs"):
-            raise SystemExit(f"! chunk {c['chunk_id']} has unknown audience {c['audience']!r}")
+        if not isinstance(c["audience"], str) or not c["audience"].strip():
+            raise SystemExit(f"! chunk {c['chunk_id']} has no audience")
     return chunks
 
 
@@ -93,7 +93,8 @@ def main():
         "dims": None,
         "chunk_count": len(chunks),
         "passage_count": len(passages),
-        "audiences": {a: sum(c["audience"] == a for c in chunks) for a in ("college", "shs")},
+        "audiences": {a: sum(c["audience"] == a for c in chunks)
+                      for a in sorted({c["audience"] for c in chunks})},
         "corpus_sha256": corpus_hash,
         "source_files": [str(p) for p in args.chunks],
     }

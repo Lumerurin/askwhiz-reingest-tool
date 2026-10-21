@@ -16,6 +16,7 @@ clean/
 # chatbot repo as index_v1/, index_v2/, ... (see INDEX_README.md).
 index/
 index_*/
+.building_index_*/
 
 # Secrets (GLM API key etc.) -- never commit
 .env

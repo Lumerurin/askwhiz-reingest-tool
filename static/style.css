@@ -257,3 +257,30 @@ legend { padding: 0 0.4rem; font-weight: 600; font-size: 0.9rem; }
 @media (max-width: 800px) {
   .page-review { grid-template-columns: 1fr; }
 }
+
+/* ---- search index ---- */
+.index-handbook { display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+.index-handbook:last-child { border-bottom: none; }
+.index-handbook input { margin-top: 0.2rem; }
+.index-handbook .meta { color: var(--muted); font-size: 0.82rem; }
+.index-handbook.disabled { opacity: 0.6; }
+#index-handbooks { margin-bottom: 0.9rem; }
+.index-warn { background: var(--warn-bg); border-radius: 6px; padding: 0.5rem 0.75rem; font-size: 0.85rem; margin: 0.5rem 0; }
+.index-table-wrap { overflow-x: auto; }
+table.index-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+table.index-table th, table.index-table td { text-align: left; padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+table.index-table th { color: var(--muted); font-weight: 600; font-size: 0.8rem; }
+table.index-table td.num, table.index-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.index-table tr.detail-row td { background: var(--bg); }
+.delta-up { color: var(--ok); font-size: 0.78rem; }
+.delta-down { color: var(--bad); font-size: 0.78rem; }
+.rank-pill { display: inline-block; min-width: 2.2rem; text-align: center; border-radius: 999px; padding: 0.05rem 0.4rem; font-size: 0.78rem; font-weight: 600; }
+.rank-1 { background: var(--ok-bg); color: var(--ok); }
+.rank-mid { background: var(--warn-bg); color: #92620a; }
+.rank-miss { background: var(--bad-bg); color: var(--bad); }
+.publish-steps { font-size: 0.85rem; line-height: 1.6; margin: 0.4rem 0 0; padding-left: 1.2rem; }
+.publish-steps code { font-family: var(--mono); font-size: 0.8rem; }
+a.link-btn { display: inline-block; border: 1px solid var(--border); background: #fff; color: var(--text);
+  border-radius: 6px; text-decoration: none; }
+a.link-btn:hover { border-color: var(--accent); }
