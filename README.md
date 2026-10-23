@@ -1,10 +1,18 @@
 # AskWhiz Handbook Extractor
 
-Turns a student handbook PDF into a clean, chunked text corpus, ready to be embedded for
-[AskWhiz](#status--whats-next). It's a two-part project:
+Builds AskWhiz's knowledge base from two sources and turns it into the search index the chatbot
+reads:
+
+- **Student handbook PDFs** (College, Senior High, High School), extracted, reviewed by a person,
+  and frozen as chunks.
+- **MMCM's BoldDesk help center** (support.mcm.edu.ph), synced automatically. BoldDesk is the main,
+  living knowledge base: when MMCM publishes or edits an article there, a sync picks it up.
+
+It's a two-part project:
 
 - A **pipeline** (`extract.py` → `chunker.py`, orchestrated by `ingest.py`) that pulls text out of a
-  PDF, splits it into headed sections, and freezes the result as JSONL.
+  PDF, splits it into headed sections, and freezes the result as JSONL. `bolddesk_sync.py` does the
+  same for help-center articles, and `build_index.py` turns all chunks into a search index.
 - A **local web app** (`app.py` + `static/`) wrapped around that pipeline, so a non-technical person
   can drop in a PDF, watch it get processed, and fix the handful of things a PDF parser can't read on
   its own (tables rendered as pasted images, flowcharts/diagrams, scanned pages) — without touching
@@ -19,11 +27,23 @@ python app.py
 
 Then open `http://127.0.0.1:8000`.
 
+To sync the BoldDesk help center, create a file named `.env` in this folder first. It is listed in
+`.gitignore`, so it never goes to GitHub. Never paste the key anywhere else.
+
+```
+BOLDDESK_DOMAIN=support.mcm.edu.ph
+BOLDDESK_API_KEY=the key MMCM provided
+```
+
+The key should come from a BoldDesk account whose role can only view the Knowledge Base. A BoldDesk
+key carries all the permissions of the account that created it, so a key from a normal staff
+account could also read student tickets.
+
 ## Using the app
 
-The app has three main tabs (**Handbooks**, **Review**, **Page Explorer**) for everyday work, and
-three **Advanced** ones (**Settings**, **Manual Corrections**, **Browse Results**) for tuning and
-inspection. Day to day, you'll mostly live in the first three.
+The app has four main tabs (**Handbooks**, **Review**, **Page Explorer**, **Search Index**) for
+everyday work, and three **Advanced** ones (**Settings**, **Manual Corrections**, **Browse Results**)
+for tuning and inspection.
 
 ### 1. Handbooks — add one, see its status
 
@@ -100,21 +120,45 @@ A few things worth knowing:
 - Saving doesn't apply anything to the corpus by itself — go back to **Review** and click **Process**
   to re-run the pipeline and bake it in.
 
-### 4. Settings (Advanced)
+### 4. Search Index — sync BoldDesk, build the index, check it
+
+This is where the knowledge base becomes something the chatbot can search.
+
+1. **Sync from BoldDesk** (on the Help Center row). Downloads articles that are new or changed since
+   the last sync and drops ones MMCM unpublished. Only articles that are **Published, Active and
+   visible to Any Users** are ever downloaded: drafts, staff-only and group-only articles never are.
+   The report under the button lists what was new, updated or removed.
+2. **Tick the sources** to include. Each handbook has its own audience (`college`, `shs`,
+   `high-school-handbook`), so its rules only answer that group's questions. Help-center articles
+   have audience `all`: they are searched for every group. The tab warns you if two handbooks share
+   an audience (an old and a new edition) or a group has no gold questions.
+3. **Build search index.** Saves a new numbered folder (`index_v1`, `index_v2`, ...) and runs the gold
+   questions (Gate 4). Earlier versions are never overwritten.
+4. **Index versions** lists every build with its scores and a passed/failed badge. **Details** shows
+   how each gold question ranked; **Download** gives the folder as a zip.
+
+Building an index **does not change the chatbot**. A passing version is copied into the chatbot
+project by a person. (Once the chatbot server is running, it will sync BoldDesk on its own every few
+minutes; this tab is for building and checking by hand.)
+
+Command-line equivalents: `python bolddesk_sync.py` (add `--full` to re-download everything),
+`python build_index.py --chunks chunks\*.jsonl --out index_vN`, `python eval_gold.py --index index_vN`.
+
+### 5. Settings (Advanced)
 
 Per-handbook fine-tuning: which pages to skip (cover, table of contents), running headers to strip,
 known typos to fix, and how headings are detected (font weight/size, left-margin position). New
 handbooks work fine with none of this set — these are refinements you reach for if the review queue
 keeps flagging the same kind of thing, not requirements for a first pass.
 
-### 5. Manual Corrections (Advanced)
+### 6. Manual Corrections (Advanced)
 
 A flat list of every authored correction across every handbook, editable in bulk. Most day-to-day
 correction work happens through Review + Page Explorer now, since that surfaces every correction
 (finished or still a draft) in one page-sorted list right next to the page image — this tab is more
 useful for a bird's-eye view across a whole handbook, or bulk edits.
 
-### 6. Browse Results (Advanced)
+### 7. Browse Results (Advanced)
 
 Inspect the frozen chunks for a handbook — search by text, or download the raw `.jsonl`.
 
@@ -127,7 +171,7 @@ Ported from the original CLI pipeline (`ingest.py`) and extended in the app:
 | 1 — drift | PDF page count vs. what `pipeline_config.json` expects | a new edition doesn't match the config it was tuned against |
 | 2 — authored tables | Required hand-transcribed tables are present *and verified* | a required correction is missing or unverified |
 | 3 — review queue | Every flagged or manually-corrected page is resolved | a page is still `pending`, `unverified`, or a saved correction hasn't been re-processed (`needs_rerun`) |
-| 4 — gold questions | A newly built search index finds the right section for the 20 questions in `gold_expected.json` | fewer than 18 of 20 are in the top 5, or "What is the school motto?" isn't answered first |
+| 4 — gold questions | A newly built search index finds the right section for the questions in `gold_expected.json` (33: College, SHS, High School and Help Center) | fewer than 90% are in the top 5 (30 of 33), or "What is the school motto?" isn't answered first for every audience it's asked for |
 
 Gates 1–3 are re-checked live from the actual frozen corpus, not from in-progress edits — so the app
 can't report a clean pass while a saved-but-not-yet-applied correction sits stale. Gate 4 runs on the
@@ -144,6 +188,9 @@ passages.py              splits a chunk into small labelled search passages
 build_index.py           chunks -> search index folder (passages + vectors), local model, no cloud
 retrieve.py              hybrid keyword + meaning search, used by the chatbot and the tests
 eval_gold.py             scores an index on gold_expected.json (gate 4 uses this)
+gold_expected.json       the gold questions and which chunks answer them
+bolddesk_probe.py        read-only first look: lists help-center articles and their visibility
+bolddesk_sync.py         read-only sync: published public articles -> chunks/bolddesk_kb.chunks.jsonl
 verify_extraction.py     standalone pre-flight PDF sanity checker (CLI)
 app.py                   FastAPI web app: runs the pipeline, gate 3, the review/correction UI,
                          and the Search Index tab (build + gate 4)
@@ -154,7 +201,11 @@ authored_tables.json     hand-transcribed corrections for content the parser can
 review_state.json        pages a human has explicitly dismissed as "fine as-is"
 
 uploads/                 source PDFs for handbooks added through the app
-chunks/                  the frozen, committed corpus -- one .jsonl per handbook
+chunks/                  the committed corpus -- one .jsonl per handbook, plus bolddesk_kb.chunks.jsonl
+                         (the help-center articles as of the last sync)
+bolddesk_raw/            cached article downloads, so a sync only fetches what changed (not committed)
+bolddesk_inventory.json  output of bolddesk_probe.py (not committed)
+.env                     BoldDesk domain + API key (never committed)
 raw/, clean/             intermediate extraction output, regenerated on each run (not committed)
 index/, index_v*/        search index builds, made on the Search Index tab (not committed here; a
                          passing version is copied into the chatbot repo)
@@ -162,11 +213,14 @@ index/, index_v*/        search index builds, made on the Search Index tab (not 
 
 ## Status / what's next
 
-The corpus is built and frozen here, and the **Search Index** tab turns it into the index the chatbot
-reads (steps 7–8). AWS was dropped in October 2026: the index is a folder of files built with a small
+The knowledge base is built: three handbooks plus the BoldDesk help center (32 published articles,
+41 chunks). `index_v2` (October 23, 2026) passed Gate 4 with all 33 gold questions in the top 5 and
+an MRR of 0.846. AWS was dropped in October 2026: the index is a folder of files built with a small
 local embedding model (bge-small-en-v1.5), with no cloud service and no per-use cost. See
-`INDEX_README.md` for how search works and the baseline scores.
+`INDEX_README.md` for how search works and the score history.
 
-Building an index never changes the chatbot. To use a new one: build it on the Search Index tab, check
-it passed Gate 4, download it, put it in the chatbot repo, and point the chatbot's index setting at it.
-Next to build: the answering engine (GLM via the Z.ai API) and the chat widget, hosted on Render.
+Next to build: the answering engine (FastAPI). It will search the index, ask the language model
+(GLM via the Z.ai API, or a model on MMCM's own server -- not decided yet), cite the handbook page or
+help-center link, prefer the 2026 help center where it disagrees with the 2020 handbooks, log every
+question, and re-sync BoldDesk automatically every ~15 minutes (switching to the new index only if
+Gate 4 passes). Then the chat widget for the school website.
