@@ -23,5 +23,13 @@
   {"q": "Which day can learners wear civilian clothes?", "audience": "high-school-handbook", "expect": ["handbook_high_school_handbook_s0048", "handbook_high_school_handbook_s0049", "handbook_high_school_handbook_s0050"]},
   {"q": "What happens if a Grade 8 student fails two learning areas?", "audience": "high-school-handbook", "expect": ["handbook_high_school_handbook_authored_page_41", "handbook_high_school_handbook_s0056"]},
   {"q": "What happens if I am late to class repeatedly?", "audience": "high-school-handbook", "expect": ["handbook_high_school_handbook_authored_page_17"]},
-  {"q": "How do I report bullying?", "audience": "high-school-handbook", "expect": ["handbook_high_school_handbook_s0046", "handbook_high_school_handbook_s0045"]}
+  {"q": "How do I report bullying?", "audience": "high-school-handbook", "expect": ["handbook_high_school_handbook_s0046", "handbook_high_school_handbook_s0045"]},
+  {"q": "How do I pay my tuition using GCash?", "audience": "college", "expect": ["bolddesk_kb_a59"]},
+  {"q": "How do I request my Transcript of Records?", "audience": "college", "expect": ["bolddesk_kb_a34", "handbook_college_s0032"]},
+  {"q": "How long does it take to process a TOR request?", "audience": "college", "expect": ["bolddesk_kb_a34"]},
+  {"q": "How do I apply for a leave of absence?", "audience": "college", "expect": ["bolddesk_kb_a40", "handbook_college_s0029"]},
+  {"q": "How do I get a replacement ID?", "audience": "shs", "expect": ["bolddesk_kb_a22"]},
+  {"q": "Can I pay my tuition through a promissory note?", "audience": "college", "expect": ["bolddesk_kb_a50"]},
+  {"q": "How do I request a copy of my report card?", "audience": "high-school-handbook", "expect": ["bolddesk_kb_a36"]},
+  {"q": "Where can I pay my tuition over the counter?", "audience": "shs", "expect": ["bolddesk_kb_a62", "bolddesk_kb_a63", "bolddesk_kb_a54"]}
 ]

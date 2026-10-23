@@ -110,9 +110,10 @@ def main():
         np.save(out / "vectors.npy", vecs)
         manifest["dims"] = int(vecs.shape[1])
 
-    chunk_map = {c["chunk_id"]: {k: c[k] for k in
+    chunk_map = {c["chunk_id"]: {k: c.get(k) for k in
                  ("chunk_id", "audience", "breadcrumb", "pages", "page_labels",
-                  "chunk_text", "source_type")} for c in chunks}
+                  "chunk_text", "source_type", "source", "source_url",
+                  "last_modified_on")} for c in chunks}
     (out / "chunks.json").write_text(json.dumps(chunk_map, ensure_ascii=False, indent=1), encoding="utf-8")
     (out / "passages.json").write_text(json.dumps(passages, ensure_ascii=False, indent=1), encoding="utf-8")
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")

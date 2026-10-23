@@ -20,3 +20,7 @@ index_*/
 
 # Secrets (GLM API key etc.) -- never commit
 .env
+
+# BoldDesk pulls -- regenerated from the live help center, not source
+bolddesk_inventory.json
+bolddesk_raw/

@@ -1335,15 +1335,22 @@ function renderIndexHandbooks() {
     const row = document.createElement("label");
     row.className = "index-handbook" + (h.indexable ? "" : " disabled");
     const checked = h.indexable && (keepPrevious ? previous.has(h.id) : true);
+    const syncBtn = h.kind === "bolddesk"
+      ? `<button type="button" class="small-btn bd-sync-btn" style="margin-left:auto;">Sync from BoldDesk</button>` : "";
     row.innerHTML = `
       <input type="checkbox" value="${esc(h.id)}" ${checked ? "checked" : ""} ${h.indexable ? "" : "disabled"}>
-      <div>
+      <div style="flex:1;">
         <div><strong>${esc(h.source)}</strong></div>
         <div class="meta">${h.indexable
           ? `Audience: ${esc(h.audience)} · ${h.chunk_count} sections · ${o.gold_by_audience[h.audience] || 0} gold questions`
           : `Can't be included: ${esc(h.reason)}.`}</div>
-      </div>`;
+        ${h.kind === "bolddesk" ? `<div class="meta bd-sync-status"></div>` : ""}
+      </div>${syncBtn}`;
     row.querySelector("input").addEventListener("change", updateIndexWarnings);
+    if (h.kind === "bolddesk") {
+      row.querySelector(".bd-sync-btn").addEventListener("click", (ev) => { ev.preventDefault(); syncBoldDesk(row); });
+      if (h.last_sync) row.querySelector(".bd-sync-status").innerHTML = bolddeskReportHtml(h.last_sync);
+    }
     wrap.appendChild(row);
   }
   const warn = document.createElement("div");
@@ -1361,13 +1368,13 @@ function updateIndexWarnings() {
   const byAudience = {};
   for (const h of chosen) (byAudience[h.audience] ||= []).push(h.source);
   for (const [aud, names] of Object.entries(byAudience)) {
-    if (names.length > 1) {
+    if (names.length > 1 && aud !== "all") {
       warnings.push(`${names.join(" and ")} have the same audience (${aud}). ` +
         `If one is a newer edition of the other, include only the newer one, or the chatbot will see both and may quote the old rules.`);
     }
   }
   for (const [aud, n] of Object.entries(o.gold_by_audience)) {
-    if (!byAudience[aud]) {
+    if (aud !== "all" && !byAudience[aud]) {
       warnings.push(`No handbook for audience "${aud}" is selected, so its ${n} gold question${n > 1 ? "s" : ""} will find nothing and Gate 4 will likely fail.`);
     }
   }
@@ -1378,6 +1385,32 @@ function updateIndexWarnings() {
   }
   $("#index-warnings").innerHTML = warnings.map((w) => `<div class="index-warn">${esc(w)}</div>`).join("");
   $("#index-build-btn").disabled = chosen.length === 0 || (o.job && o.job.state === "running");
+}
+
+function bolddeskReportHtml(r) {
+  const parts = [`Last sync ${esc((r.synced_at || "").replace("T", " ").slice(0, 16))}: ${r.usable} usable of ${r.listed} articles`];
+  for (const [k, label] of [["added", "new"], ["updated", "updated"], ["removed", "removed"]]) {
+    if (r[k] && r[k].length) parts.push(`${r[k].length} ${label} (${r[k].map(esc).join(", ")})`);
+  }
+  if (!r.changed) parts.push("no changes");
+  if (r.empty && r.empty.length) parts.push(`<span style="color:var(--bad)">${r.empty.length} with no text: ${r.empty.map(esc).join(", ")}</span>`);
+  return parts.join(" · ");
+}
+
+async function syncBoldDesk(row) {
+  const btn = row.querySelector(".bd-sync-btn");
+  const status = row.querySelector(".bd-sync-status");
+  setBtnBusy(btn, true, "Syncing...");
+  try {
+    const r = await fetchJSON("/api/bolddesk/sync", { method: "POST" });
+    await loadIndexTab();
+    const fresh = $(".bd-sync-status");
+    if (fresh) fresh.innerHTML = bolddeskReportHtml(r) +
+      (r.changed ? " · <strong>Build a new index to use the changes.</strong>" : "");
+  } catch (e) {
+    status.innerHTML = `<span style="color:var(--bad)">Sync failed: ${esc(e.message)}</span>`;
+    setBtnBusy(btn, false);
+  }
 }
 
 async function startIndexBuild() {

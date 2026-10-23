@@ -33,6 +33,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+import bolddesk_sync
 import extract
 import ingest
 
@@ -740,7 +741,33 @@ def _index_candidates() -> list:
                     "audience": d["audience"], "chunk_count": n,
                     "chunk_file": str(chunk_file_for(d).relative_to(HERE)),
                     "indexable": reason is None, "reason": reason})
+    # The BoldDesk help center: not a PDF, kept in sync by bolddesk_sync.py
+    bd = bolddesk_sync.CHUNKS_FILE
+    n = sum(1 for l in bd.read_text(encoding="utf-8").splitlines() if l.strip()) if bd.exists() else 0
+    out.append({"id": "bolddesk", "doc_id": bolddesk_sync.DOC_ID,
+                "source": "MMCM Help Center (BoldDesk)", "audience": bolddesk_sync.AUDIENCE,
+                "chunk_count": n, "chunk_file": str(bd.relative_to(HERE)),
+                "indexable": n > 0, "kind": "bolddesk",
+                "reason": None if n else "it hasn't been synced yet -- press Sync from BoldDesk",
+                "last_sync": _BOLDDESK_LAST.get("report")})
     return out
+
+
+_BOLDDESK_LAST: dict = {}
+
+
+@app.post("/api/bolddesk/sync")
+def bolddesk_sync_now():
+    """Read-only: list articles, download new/changed published ones, rewrite
+    chunks/bolddesk_kb.chunks.jsonl. Same code the chatbot server will run on
+    a timer."""
+    try:
+        client = bolddesk_sync.Client.from_env(HERE)
+        report = bolddesk_sync.sync(client)
+    except bolddesk_sync.BoldDeskError as e:
+        raise HTTPException(400, f"{e}. Nothing was changed.")
+    _BOLDDESK_LAST["report"] = report
+    return report
 
 
 @app.get("/api/index")
@@ -751,6 +778,9 @@ def get_index_overview():
     gold_by_audience: dict = {}
     for g in gold:
         gold_by_audience[g["audience"]] = gold_by_audience.get(g["audience"], 0) + 1
+        # questions answered by help-center articles also cover audience "all"
+        if any(e.startswith(bolddesk_sync.DOC_ID + "_") for e in g["expect"]):
+            gold_by_audience["all"] = gold_by_audience.get("all", 0) + 1
     return {
         "handbooks": _index_candidates(),
         "versions": index_versions(),

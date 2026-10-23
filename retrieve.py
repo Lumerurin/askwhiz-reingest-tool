@@ -11,6 +11,7 @@ you cite), found through its best-matching small passage.
 
 FIXES OVER THE THESIS VERSION (each was a confirmed v1 bug)
   1. Audience filter BEFORE scoring. College and SHS chunks never compete.
+     Help-center articles (audience "all") are searched for every group.
   2. Weighted Reciprocal Rank Fusion instead of min-max normalisation:
          score(p) = 0.3 / (60 + rank_dense(p)) + 0.7 / (60 + rank_keyword(p))
      v1 forced each list's top score to 1.0, so dense #1 could never lose.
@@ -130,7 +131,9 @@ class Retriever:
         return v / (np.linalg.norm(v) or 1.0)
 
     def search(self, question: str, audience: str | None = None, k: int = 5) -> list[dict]:
-        idx = [i for i, p in enumerate(self.passages) if audience is None or p["audience"] == audience]
+        # "all" = help-center articles that apply to every student group
+        idx = [i for i, p in enumerate(self.passages)
+               if audience is None or p["audience"] in (audience, "all")]
         if not idx:
             return []
 
@@ -168,6 +171,7 @@ class Retriever:
                 "breadcrumb": c["breadcrumb"],
                 "pages": c["pages"],
                 "page_labels": c["page_labels"],
+                "source_url": c.get("source_url"),
                 "matched_path": p["path"],
                 "matched_text": p["text"],
                 "chunk_text": c["chunk_text"],
